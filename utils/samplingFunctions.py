@@ -13,10 +13,13 @@ import random
 # from various distributions such as the truncated geometric 
 # distribution. 
 # 
+# The parameters stored at the top of this script are copied from 
+# the TruncGeomFits.xlsx file. 
+# 
 ######################################################################
 # Truncated geometric parameters for sampling NCG seeds, 
 # from 2013 (index 0) through 2020
-pNcg = [0.4375, 0.4361, 0.4054, 0.4133, 0.4183, 0.4258, 0.4277, 0.4294]
+pNcg = [0.4375, 0.436090226, 0.405405405, 0.413333333, 0.418300654, 0.425806452, 0.427672956, 0.429447853]
 pSumNcg = [0.989977404, 0.989774678, 0.984376884, 0.985967621, 0.986890425, 0.988184109, 0.988487911, 0.98877044]
 
 # Truncated geometric parameters for sampling Final Four seeds, 
@@ -32,8 +35,8 @@ pF4_prob11 = [0.025, 0.024, 0.022, 0.022, 0.021, 0.02, 0.027, 0.026]
 # from 2013 (index 0) through 2020
 pE8Top = [0.643678161, 0.630434783, 0.625, 0.629441624, 0.63681592, 0.640776699, 0.623853211, 0.625]
 pSumE8Top = [0.99974014, 0.99965204, 0.999608934, 0.999644489, 0.999697299, 0.999722722, 0.999599264, 0.999608934]
-pE8Bottom = [0.466666667, 0.471544715, ]
-pSumE8Bottom = [0.993453792, 0.993917726, ]
+pE8Bottom = [0.466666667, 0.471544715, 0.465116279, 0.466165414, 0.463768116, 0.456747405, 0.453333333, 0.45751634]
+pSumE8Bottom = [0.993453792, 0.993917726, 0.993299996, 0.99340441, 0.993163701, 0.992413971, 0.992024081, 0.992499447]
 
 
 def getTruncGeom(p, pSum):
@@ -69,14 +72,13 @@ def sampleNCG(year):
 	   [seed0, seed1] : list of ints
 	       The sampled seeds
 	"""
-	# TODO: implement
+	# 1. Load NCG params
+	p = pNcg[year - 2013]
+	pSum = pSumNcg[year - 2013]
 
-	# 1. Load NCG params from file... or store in global arrays?
-
-	# 2. Call getTruncGeom twice (still need to copy it into this file). 
-
-	seed0 = -1
-	seed1 = -1
+	# 2. Get two independent samples from truncated geometric distribution
+	seed0 = getTruncGeom(p, pSum)
+	seed1 = getTruncGeom(p, pSum)
 
 	return [seed0, seed1]
 
@@ -95,18 +97,47 @@ def sampleF4(year):
 	   [seed0, seed1, seed2, seed3] : list of ints
 	       The sampled seeds
 	"""
-	# TODO: implement
+	# 1. Load F4 parameters
+	p = pF4[year - 2013]
+	pSum = pSumF4[year - 2013]
 
-	# 1. Load F4 params from file... or store in global arrays?
+	# 2. Get four independent samples from trunc. geom. distribution
+	seeds = []
+	for regionIndex in range(4):
+		seeds.append(getTruncGeom(p, pSum))
 
-	# 2. Call getTruncGeom four times (still need to copy it into this file). 
+	return seeds
 
-	seed0 = -1
-	seed1 = -1
-	seed2 = -1
-	seed3 = -1
 
-	return [seed0, seed1, seed2, seed3]
+def sampleF4adjusted11(year):
+	"""Randomly samples four seeds to compete in 
+	   the Final Four (F4), with an adjustment made 
+	   for the 11-seeds. 
+
+	   Parameters
+	   ----------
+	   year : int
+	       The year of the tournament to be predicted
+
+	   Returns
+	   -------
+	   [seed0, seed1, seed2, seed3] : list of ints
+	       The sampled seeds
+	"""
+	# 1. Load F4_adjusted11 parameters
+	p = pF4_adjusted11[year - 2013]
+	pSum = pSumF4_adjusted11[year - 2013]
+	prob11 = pF4_prob11[year - 2013]
+
+	# 2. Get four independent samples from two-stage distribution
+	seeds = []
+	for regionIndex in range(4):
+		if random.random() < prob11:
+			seeds.append(11)
+		else:
+			seeds.append(getTruncGeom(p, pSum))
+
+	return seeds
 
 
 def sampleE8(year):
@@ -123,13 +154,16 @@ def sampleE8(year):
 	   [topSeed0, bottomSeed0, topSeed1, bottomSeed1, ...] : list of ints
 	       The sampled seeds
 	"""
-	# TODO: implement
+	# 1. Load E8 parameters
+	pTop = pE8Top[year - 2013]
+	pSumTop = pSumE8Top[year - 2013]
+	pBottom = pE8Bottom[year - 2013]
+	pSumBottom = pSumE8Bottom[year - 2013]
 
-	# 1. Load NCG params from file... or store in global arrays?
+	# 2. Get four independent samples each from top and bottom distributions
+	seeds = []
+	for regionIndex in range(4):
+		seeds.append(getTruncGeom(pTop, pSumTop))
+		seeds.append(getTruncGeom(pBottom, pSumBottom))
 
-	# 2. Call getTruncGeom twice (still need to copy it into this file). 
-
-	seed0 = -1
-	seed1 = -1
-
-	return [seed0, seed1]
+	return seeds
