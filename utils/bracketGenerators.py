@@ -261,11 +261,23 @@ def generateBracketBradleyTerry(year):
     bracket = []
     f4Seeds = [-1 for i in range(4)]
     
+    # Sample each of the four regions independently
     for r in range(4):
         regionVector, f4Seeds[r] = sampleRegion(year=year, model='bradley-terry')
         bracket.append(regionVector)
 
-    # TODO: F4 and NCG games
+    # Choose outcomes of F4 and NCG games
+    winProb0 = getWinProbability({'seed': f4Seeds[0]}, {'seed': f4Seeds[1]}, r=5, year=year, model='bradley-terry')
+    f4Result0 = 1 if random.random() < winProb0 else 0
+    winProb1 = getWinProbability({'seed': f4Seeds[2]}, {'seed': f4Seeds[3]}, r=5, year=year, model='bradley-terry')
+    f4Result1 = 1 if random.random() < winProb1 else 0
+    bracket.append(f4Result0)
+    bracket.append(f4Result1)
+
+    ncgSeeds = applyRoundResults(f4Seeds, [f4Result0, f4Result1])
+    winProb = getWinProbability({'seed': ncgSeeds[0]}, {'seed': ncgSeeds[1]}, r=5, year=year, model='bradley-terry')
+    ncgResult = 1 if random.random() < winProb else 0
+    bracket.append(ncgResult)
 
     return bracket
 
@@ -273,3 +285,6 @@ def generateBracketBradleyTerry(year):
 if __name__ == '__main__':
     testPowerBracket = generateBracketPower(2019, 1)
     print(testPowerBracket)
+
+    testBradleyTerryBracket = generateBracketBradleyTerry(2019, 1)
+    print(testBradleyTerryBracket)
