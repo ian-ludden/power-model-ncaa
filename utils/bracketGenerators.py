@@ -1,9 +1,10 @@
 from collections import defaultdict
 import random
 
-import bracketManipulations as bm
+from bracketManipulations import applyRoundResults
 import fileUtils
 import samplingFunctions
+from scoringFunctions import scoreBracket
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -123,7 +124,7 @@ def generateBracketPower(year, r, samplingFnName=None):
     f4Result1 = 1 if random.random() < winProb1 else 0
     bracket.append(f4Result0)
     bracket.append(f4Result1)
-    ncgSeeds = bm.applyRoundResults(f4Seeds, [f4Result0, f4Result1])
+    ncgSeeds = applyRoundResults(f4Seeds, [f4Result0, f4Result1])
 
     # NCG
     ncgTeam0 = {'seed': ncgSeeds[0], 'region': -1}
@@ -264,7 +265,7 @@ def generateBracketBradleyTerry(year):
     # Sample each of the four regions independently
     for r in range(4):
         regionVector, f4Seeds[r] = sampleRegion(year=year, model='bradley-terry')
-        bracket.append(regionVector)
+        bracket += regionVector
 
     # Choose outcomes of F4 and NCG games
     winProb0 = getWinProbability({'seed': f4Seeds[0]}, {'seed': f4Seeds[1]}, r=5, year=year, model='bradley-terry')
@@ -284,7 +285,19 @@ def generateBracketBradleyTerry(year):
 
 if __name__ == '__main__':
     testPowerBracket = generateBracketPower(2019, 1)
-    print(testPowerBracket)
+    print(scoreBracket(testPowerBracket, year=2019))
 
-    testBradleyTerryBracket = generateBracketBradleyTerry(2019, 1)
-    print(testBradleyTerryBracket)
+    testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
+    print(scoreBracket(testNcgBracket, year=2019))
+
+    testF4Bracket = generateBracketPower(2019, 5, 'sampleF4')
+    print(scoreBracket(testF4Bracket, year=2019))
+
+    testF4adjusted11Bracket = generateBracketPower(2019, 5, 'sampleF4adjusted11')
+    print(scoreBracket(testF4adjusted11Bracket, year=2019))
+
+    testE8Bracket = generateBracketPower(2019, 4, 'sampleE8')
+    print(scoreBracket(testE8Bracket))
+
+    testBradleyTerryBracket = generateBracketBradleyTerry(2019)
+    print(scoreBracket(testBradleyTerryBracket, year=2019))

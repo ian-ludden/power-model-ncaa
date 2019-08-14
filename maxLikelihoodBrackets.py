@@ -8,6 +8,8 @@ import os
 from pprint import pprint
 import random
 
+# from utils.scoringFunctions import scoreBracket
+
 ######################################################################
 # Author: 	Ian Ludden
 # Date: 	19 July 2019
@@ -536,69 +538,6 @@ def evaluateAllLastThreeGames(maxSeed):
 				totalLogProb += mostLikelyRegions[str(regionWinner)][1]
 			print('{0},{1:03b},{2:.4f},{3:.4f}'.format(regionWinners, j, partialLogProb, totalLogProb))
 	pass
-
-
-def scoreBracket(bracketVector, actualResultsVector, isPickFavorite = False):
-	"""Scores the given bracket vector according to the 
-	   ESPN Bracket Challenge scoring system. The isPickFavorite
-	   flag indicates whether the bracket being scored is from the
-	   Pick Favorite model, in which case we assume that it correctly
-	   guesses the Final Four and National Championship outcomes.
-	   Round score subtotals, with only indices 1-6 used
-	   as actual subtotals. The 0th element is the overall total.
-	"""
-	roundScores = [0, 0, 0, 0, 0, 0, 0]
-
-	regionWinners = []
-	actualRegionWinners = []
-
-	# Compute Rounds 1-4 scores
-	for region in range(4):
-		start = 15 * region
-		end = start + 8
-		regionVector = bracketVector[start:end]
-		regionResultsVector = actualResultsVector[start:end]
-
-		seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-		actualSeeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-
-		for r in range(1, 5):
-			seeds = applyRoundResults(seeds, regionVector)
-			actualSeeds = applyRoundResults(actualSeeds, regionResultsVector)
-
-			matches = [i for i, j in zip(seeds, actualSeeds) if i == j]
-			roundScores[r] += 10 * (2 ** (r-1)) * len(matches)
-
-			start = end
-			end += int(len(seeds) / 2)
-			regionVector = bracketVector[start:end]
-			regionResultsVector = actualResultsVector[start:end]
-
-		regionWinners.append(seeds[0])
-		actualRegionWinners.append(actualSeeds[0])
-
-	# Compute Rounds 5-6 scores
-	finalFourVector = bracketVector[-3:]
-	actualFinalFourVector = actualResultsVector[-3:]
-
-	if isPickFavorite:
-		finalFourVector = actualFinalFourVector
-
-	isCorrectFirstSemifinal = (finalFourVector[0] == actualFinalFourVector[0]) and ((finalFourVector[0] == 1 and (regionWinners[0] == actualRegionWinners[0])) or (finalFourVector[0] == 0 and (regionWinners[1] == actualRegionWinners[1])))
-	if isCorrectFirstSemifinal:
-		roundScores[5] += 160
-	
-	isCorrectSecondSemifinal = (finalFourVector[1] == actualFinalFourVector[1]) and ((finalFourVector[1] == 1 and (regionWinners[2] == actualRegionWinners[2])) or (finalFourVector[1] == 0 and (regionWinners[3] == actualRegionWinners[3])))
-
-	if isCorrectSecondSemifinal:
-		roundScores[5] += 160
-
-	isCorrectChampion = (finalFourVector[2] == actualFinalFourVector[2]) and ((finalFourVector[2] == 1 and isCorrectFirstSemifinal) or (finalFourVector[2] == 0 and isCorrectSecondSemifinal))
-	if isCorrectChampion:
-		roundScores[6] += 320
-
-	roundScores[0] = sum(roundScores)
-	return roundScores
 
 
 if __name__ == '__main__':

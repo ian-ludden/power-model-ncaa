@@ -1,5 +1,5 @@
 import csv
-import math
+from math import ceil, floor, log
 import os
 import random
 
@@ -17,6 +17,10 @@ import random
 # the TruncGeomFits.xlsx file. 
 # 
 ######################################################################
+# Seed sets for each half-region
+TOP_SEEDS_SORTED = [1, 4, 5, 8, 9, 12, 13, 16]
+BOTTOM_SEEDS_SORTED = [2, 3, 6, 7, 10, 11, 14, 15]
+
 # Truncated geometric parameters for sampling NCG seeds, 
 # from 2013 (index 0) through 2020
 pNcg = [0.4375, 0.436090226, 0.405405405, 0.413333333, 0.418300654, 0.425806452, 0.427672956, 0.429447853]
@@ -48,14 +52,14 @@ def getTruncGeom(p, pSum):
 	   Parameters
 	   ----------
 	   p : float
-	       The parameter of the (truncated) geometric distribution, 
-	       fitted using the method of moments
+		   The parameter of the (truncated) geometric distribution, 
+		   fitted using the method of moments
 	   pSum : float
-	       The sum of the geometric probabilities for the support of 
-	       the truncated distribution
+		   The sum of the geometric probabilities for the support of 
+		   the truncated distribution
 	"""
-    u = random.random() * pSum
-    return int(ceil(log(1 - u) / log(1 - p)))
+	u = random.random() * pSum
+	return int(ceil(log(1 - u) / log(1 - p)))
 
 
 def sampleNCG(year):
@@ -65,12 +69,12 @@ def sampleNCG(year):
 	   Parameters
 	   ----------
 	   year : int
-	       The year of the tournament to be predicted
+		   The year of the tournament to be predicted
 
 	   Returns
 	   -------
 	   [seed0, seed1] : list of ints
-	       The sampled seeds
+		   The sampled seeds
 	"""
 	# 1. Load NCG params
 	p = pNcg[year - 2013]
@@ -90,12 +94,12 @@ def sampleF4(year):
 	   Parameters
 	   ----------
 	   year : int
-	       The year of the tournament to be predicted
+		   The year of the tournament to be predicted
 
 	   Returns
 	   -------
 	   [seed0, seed1, seed2, seed3] : list of ints
-	       The sampled seeds
+		   The sampled seeds
 	"""
 	# 1. Load F4 parameters
 	p = pF4[year - 2013]
@@ -117,12 +121,12 @@ def sampleF4adjusted11(year):
 	   Parameters
 	   ----------
 	   year : int
-	       The year of the tournament to be predicted
+		   The year of the tournament to be predicted
 
 	   Returns
 	   -------
 	   [seed0, seed1, seed2, seed3] : list of ints
-	       The sampled seeds
+		   The sampled seeds
 	"""
 	# 1. Load F4_adjusted11 parameters
 	p = pF4_adjusted11[year - 2013]
@@ -147,12 +151,12 @@ def sampleE8(year):
 	   Parameters
 	   ----------
 	   year : int
-	       The year of the tournament to be predicted
+		   The year of the tournament to be predicted
 
 	   Returns
 	   -------
 	   [topSeed0, bottomSeed0, topSeed1, bottomSeed1, ...] : list of ints
-	       The sampled seeds
+		   The sampled seeds
 	"""
 	# 1. Load E8 parameters
 	pTop = pE8Top[year - 2013]
@@ -163,7 +167,9 @@ def sampleE8(year):
 	# 2. Get four independent samples each from top and bottom distributions
 	seeds = []
 	for regionIndex in range(4):
-		seeds.append(getTruncGeom(pTop, pSumTop))
-		seeds.append(getTruncGeom(pBottom, pSumBottom))
+		topSeedIndex = getTruncGeom(pTop, pSumTop) - 1
+		seeds.append(TOP_SEEDS_SORTED[topSeedIndex])
+		bottomSeedIndex = getTruncGeom(pBottom, pSumBottom) - 1
+		seeds.append(BOTTOM_SEEDS_SORTED[bottomSeedIndex])
 
 	return seeds
