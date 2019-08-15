@@ -110,3 +110,51 @@ def aggregate(brackets):
                 matchup = (s1, s2)
                 counts[r][matchup][winner] += 1
     return counts
+
+
+def vectorToString(bracketVector):
+    """Converts bracket from list of 63 0s/1s to string of 63 0s/1s."""
+    return ''.join([str(bracketVector[i]) for i in range(len(bracketVector))])
+
+
+def stringToVector(bracketString):
+    """Converts bracket from string of 0s/1s to list of 0s/1s."""
+    return [int(bracketString[i]) for i in range(len(bracketString))]
+
+
+def stringToHex(bracketString):
+    """Converts a bracket/region string (63/15 0s and/or 1s) 
+       to a 16-/4-digit hex representation
+       by adding a leading 0.
+    """
+    bracketString = '0' + bracketString
+    nHexDigits = len(bracketString) // 4
+    hexString = ''
+    for i in range(nHexDigits):
+        nextFourBits = bracketString[4 * i : 4 * i + 4]
+        hexString += '{0:1x}'.format(int(nextFourBits, 2))
+
+    return hexString
+
+
+def hexToString(bracketHex):
+    """Converts a bracket/region hex representation 
+       to a 63-/15-bit string.
+    """
+    if len(bracketHex) == 16: # Full bracket
+        return bin(int(bracketHex, 16))[2:].zfill(63)
+    else: # Just a region
+        return bin(int(bracketHex, 16))[2:].zfill(15)
+
+
+def prettifyRegionVector(regionHex):
+    """Returns a more descriptive string for the 
+       given 4-digit hex representation of a region vector. 
+    """
+    regionVector = bm.stringToVector(bm.hexToString(regionHex))
+    seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
+    r1Winners = applyRoundResults(seeds, regionVector[:8])
+    r2Winners = applyRoundResults(r1Winners, regionVector[8:12])
+    r3Winners = applyRoundResults(r2Winners, regionVector[12:14])
+    r4Winner = applyRoundResults(r3Winners, regionVector[14:])
+    return '{0} {1} {2} {3}'.format(r1Winners, r2Winners, r3Winners, r4Winner)

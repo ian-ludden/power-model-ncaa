@@ -8,6 +8,7 @@ import os
 from pprint import pprint
 import random
 
+import utils.bracketManipulations as bm
 # from utils.scoringFunctions import scoreBracket
 
 ######################################################################
@@ -87,27 +88,6 @@ def applyRoundResults(seeds, results):
 	"""
 	nGames = len(results)
 	return [seeds[2*i] * results[i] + seeds[2*i+1] * (1 - results[i]) for i in range(nGames)]
-
-
-def regionVectorFromHex(regionHex):
-	"""Convert a region vector's 4-digit hexadecimal representation
-	   (with a leading 0) into a list of 15 0's or 1's. 
-	"""
-	bitString = bin(int(regionHex, 16))[2:].zfill(15)
-	return [int(bitString[i]) for i in range(len(bitString))]
-
-
-def prettifyRegionVector(regionHex):
-	"""Returns a more descriptive string for the 
-	   given 4-digit hex representation of a region vector. 
-	"""
-	regionVector = regionVectorFromHex(regionHex)
-	seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-	r1Winners = applyRoundResults(seeds, regionVector[:8])
-	r2Winners = applyRoundResults(r1Winners, regionVector[8:12])
-	r3Winners = applyRoundResults(r2Winners, regionVector[12:14])
-	r4Winner = applyRoundResults(r3Winners, regionVector[14:])
-	return '{0} {1} {2} {3}'.format(r1Winners, r2Winners, r3Winners, r4Winner)
 
 
 def getWinProbability(team1, team2, r):
@@ -343,7 +323,7 @@ def evaluateAndSortRegionBrackets(regionStrings):
 	"""
 	logLhoods = []
 	for regionString in regionStrings:
-		regionVector = regionVectorFromHex(regionString)
+		regionVector = bm.stringToVector(bm.hexToString(regionString))
 		logLhoods.append(logLikelihood(regionVector))
 
 	# Create array for bracket strings and log-likelihoods
@@ -435,7 +415,7 @@ def sampleBracketsAsRegions(nSamples, T=100):
 		regionWinners = []
 		for i in range(4):
 			regionHex = sampleMLRegion(T)
-			regionVector = regionVectorFromHex(regionHex)
+			regionVector = bm.stringToVector(bm.hexToString(regionHex))
 			regionVecs.append(regionVector)
 			# 1.1 Determine region winners (F4 seeds)
 			seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
