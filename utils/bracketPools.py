@@ -56,24 +56,18 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
 	return brackets
 
 
-def createAndSaveBracketPool(size, year=2020, model='power', r=1, samplingFnName=None, filepath=None):
+def createAndSaveBracketPool(sampleSize, year=2020, model='power', r=1, samplingFnName=None, filepath=None, nReplications=1):
 	"""Calls generateBracketPool with the given parameters and saves the results to a JSON file.
 	"""
-	brackets = generateBracketPool(size, year, model, r, samplingFnName)
+	brackets = []
+	for replicationIndex in range(nReplications):
+		brackets.append(generateBracketPool(sampleSize, year, model, r, samplingFnName))
 
 	if filepath is None:
-		homeDir = os.path.expanduser('~')
-		filepath = '{0}/Documents/GitHub/power-model-ncaa/out'.format(homeDir)
-		if not os.path.exists(filepath):
-			os.makedirs(filepath)
-		filepath += '/{0}_'.format(model)
-		filepath += '{0}_'.format(size) if size < 1000 else '{0}k_'.format(size // 1000)
-		filepath += '{0}'.format(year)
-		if model == 'power':
-			filepath += '_{0}_{1}'.format(r, samplingFnName)
-		filepath += '.json'
+		filepath = generateFilepath(sampleSize, year=year, model=model, r=r, samplingFnName=samplingFnName, nReplications=nReplications)
 
-	outputDict = {'year': year, 'size': size, 'model': model, 
+	outputDict = {'year': year, 'sampleSize': sampleSize, 
+					'nReplications': nReplications, 'model': model, 
 					'r': r, 'samplingFnName': samplingFnName, 
 					'brackets': brackets}
 
@@ -81,23 +75,62 @@ def createAndSaveBracketPool(size, year=2020, model='power', r=1, samplingFnName
 		outputFile.write(json.dumps(outputDict))
 
 
-if __name__ == '__main__':
-	size = 10
+def generateFilepath(sampleSize, year=2020, model='power', r=1, samplingFnName=None, nReplications=1):
+	"""Generates the path to the JSON file containing the experiment batch with the given parameters."""
+	homeDir = os.path.expanduser('~')
+	filepath = '{0}/Documents/GitHub/power-model-ncaa/out'.format(homeDir)
+	if not os.path.exists(filepath):
+		os.makedirs(filepath)
+	filepath += '/{0}_'.format(model)
+	filepath += '{0}_x_'.format(nReplications)
+	filepath += '{0}_'.format(sampleSize) if sampleSize < 1000 else '{0}k_'.format(sampleSize // 1000)
+	filepath += '{0}'.format(year)
+	if model == 'power':
+		filepath += '_{0}_{1}'.format(r, samplingFnName)
+	filepath += '.json'
+	return filepath
+
+
+def runSamples(nReplications, sampleSize):
+	"""Generates bracket pool samples for the 
+	   power model paper experiments."""
 	for year in range(2013, 2020):
 		# Bradley-Terry
-		createAndSaveBracketPool(size, year=year, model='bradley-terry')
+		createAndSaveBracketPool(sampleSize, year=year, model='bradley-terry', 
+			nReplications=nReplications)
 
 		# Power: r = 1
-		createAndSaveBracketPool(size, year=year, model='power')
+		createAndSaveBracketPool(sampleSize, year=year, model='power', 
+			nReplications=nReplications)
 
 		# Power: r = 4
-		createAndSaveBracketPool(size, year=year, model='power', r=4, samplingFnName='sampleE8')
+		createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+			samplingFnName='sampleE8', nReplications=nReplications)
 
 		# Power: r = 5, sampleF4
-		createAndSaveBracketPool(size, year=year, model='power', r=5, samplingFnName='sampleF4')
+		createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
+			samplingFnName='sampleF4', nReplications=nReplications)
 
 		# Power: r = 5, sampleF4adjusted11
-		createAndSaveBracketPool(size, year=year, model='power', r=5, samplingFnName='sampleF4adjusted11')
+		createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
+			samplingFnName='sampleF4adjusted11', nReplications=nReplications)
 
 		# Power: r = 6
-		createAndSaveBracketPool(size, year=year, model='power', r=6, samplingFnName='sampleNCG')
+		createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
+			samplingFnName='sampleNCG', nReplications=nReplications)
+
+
+def readAndScore(nReplications, sampleSize):
+	"""Reads the JSON files for all experiment batches, 
+	   scores the brackets, and 
+	   stores the Max Score and ESPN Count results 
+	   in a CSV file."""
+	# TODO: implement
+	pass
+
+
+if __name__ == '__main__':
+	sampleSize = 10
+	nReplications = 25
+	runSamples(nReplications=nReplications, sampleSize=sampleSize)
+	readAndScore(nReplications=nReplications, sampleSize=sampleSize)

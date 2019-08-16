@@ -1,4 +1,5 @@
 from collections import defaultdict
+import os
 import random
 
 from bracketManipulations import applyRoundResults
@@ -20,8 +21,9 @@ TOP_SEEDS = [1, 16, 8, 9, 5, 12, 4, 13]
 BOTTOM_SEEDS = [6, 11, 3, 14, 7, 10, 2, 15]
 
 # Filenames for power and Bradley-Terry model parameters
-POWER_FILENAME = 'powerParams.csv'
-BT_FILENAME = 'btParams.csv'
+HOME_DIR = os.path.expanduser('~')
+POWER_FILENAME = '{0}/Documents/GitHub/power-model-ncaa/powerParams.csv'.format(HOME_DIR)
+BT_FILENAME = '{0}/Documents/GitHub/power-model-ncaa/btParams.csv'.format(HOME_DIR)
 
 # Array for storing power model Round 1 alpha values
 R1_ALPHAS = None
