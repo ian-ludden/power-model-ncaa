@@ -1,11 +1,15 @@
 import csv
 import json
 from math import ceil, floor, log
+import numpy as np
 import os
+from pprint import pprint
 import random
+import sys
 
 import bracketGenerators as bg
 import bracketManipulations as bm
+import scoringFunctions as sf
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -126,11 +130,70 @@ def readAndScore(nReplications, sampleSize):
 	   stores the Max Score and ESPN Count results 
 	   in a CSV file."""
 	# TODO: implement
-	pass
+	for year in range(2013, 2020):
+		maxScores = np.zeros((6, nReplications))
+		espnCounts = np.zeros((6, nReplications))
+		minEspnScore = sf.espnCutoffs[str(year)]
+		
+		filepaths = []
+		filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
+			nReplications=nReplications))
+		filepaths.append(generateFilepath(sampleSize, year=year, model='power', 
+			nReplications=nReplications))
+		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=4, 
+			samplingFnName='sampleE8', nReplications=nReplications))
+		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
+			samplingFnName='sampleF4', nReplications=nReplications))
+		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
+			samplingFnName='sampleF4adjusted11', nReplications=nReplications))
+		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
+			samplingFnName='sampleNCG', nReplications=nReplications))
+
+		for fIndex, filepath in enumerate(filepaths):
+			with open(filepath, 'r') as f:
+				data = json.load(f)
+
+			brackets = data['brackets']
+			for repIndex, sample in enumerate(brackets):
+				scores = np.zeros(sampleSize)
+				for bracketIndex, bracketHex in enumerate(sample):
+					bracketVector = bm.stringToVector(bm.hexToString(bracketHex))
+					scores[bracketIndex] = sf.scoreBracket(bracketVector, year=year)[0]
+
+				maxScores[fIndex][repIndex] = np.max(scores)
+				espnCounts[fIndex][repIndex] = (scores >= minEspnScore).sum()
+
+		printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts)
+
+
+def printResultsTables(year=2020, maxScores=None, espnCounts=None):
+	"""Saves the Max Score and ESPN Count results for a set of replications
+	   to a CSV file.
+	"""
+	modelHeaders = 'Replication,B-T,Power R64,Power E8,Power F4,Power F4 Adj 11,Power NCG'
+	print(year)
+	print('Max Scores')
+	print(modelHeaders)
+	for repIndex in range(maxScores.shape[1]):
+		sys.stdout.write('{0},'.format(repIndex))
+		for modelIndex in range(6):
+			sys.stdout.write('{0},'.format(int(maxScores[modelIndex][repIndex])))
+		sys.stdout.write('\n')
+
+	print()
+	print('ESPN Counts')
+	print(modelHeaders)
+	for repIndex in range(espnCounts.shape[1]):
+		sys.stdout.write('{0},'.format(repIndex))
+		for modelIndex in range(6):
+			sys.stdout.write('{0},'.format(int(espnCounts[modelIndex][repIndex])))
+		sys.stdout.write('\n')
+
+	print()
 
 
 if __name__ == '__main__':
-	sampleSize = 10
+	sampleSize = 1000
 	nReplications = 25
 	runSamples(nReplications=nReplications, sampleSize=sampleSize)
 	readAndScore(nReplications=nReplications, sampleSize=sampleSize)

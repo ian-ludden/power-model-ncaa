@@ -22,6 +22,17 @@ historicalBrackets = {
 	'2013': '110111111100101100010010010101111101101000011100111111000011111'
 }
 
+# Minimum scores from ESPN Leaderboard (Top 100)
+espnCutoffs = {
+	'2019': 1730, 
+	'2018': 1550, 
+	'2017': 1650, 
+	'2016': 1630, 
+	'2015': 1760, 
+	'2014': 1520, 
+	'2013': 1590
+}
+
 def scoreBracket(bracketVector, actualResultsVector=None, year=2013, isPickFavorite=False):
 	"""Scores the given bracket vector according to the 
 	   ESPN Bracket Challenge scoring system. The isPickFavorite
