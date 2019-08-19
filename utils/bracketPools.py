@@ -193,7 +193,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None):
 
 
 if __name__ == '__main__':
-	sampleSize = 1000
+	sampleSize = 50000
 	nReplications = 25
 	runSamples(nReplications=nReplications, sampleSize=sampleSize)
 	readAndScore(nReplications=nReplications, sampleSize=sampleSize)
