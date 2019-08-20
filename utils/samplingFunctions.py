@@ -43,7 +43,7 @@ pE8Bottom = [0.466666667, 0.471544715, 0.465116279, 0.466165414, 0.463768116, 0.
 pSumE8Bottom = [0.993453792, 0.993917726, 0.993299996, 0.99340441, 0.993163701, 0.992413971, 0.992024081, 0.992499447]
 
 
-def getTruncGeom(p, pSum):
+def getTruncGeom(p, pSum, maxVal=None):
 	"""Samples from a truncated geometric random variable 
 	   with parameter p and probabilities that add to pSum.
 
@@ -57,9 +57,15 @@ def getTruncGeom(p, pSum):
 	   pSum : float
 		   The sum of the geometric probabilities for the support of 
 		   the truncated distribution
+	   maxVal : int
+	       The maximum possible value (used to catch rare rounding errors)
+
 	"""
-	u = random.random() * pSum
-	return int(ceil(log(1 - u) / log(1 - p)))
+	u = random.random()
+	sampledValue = int(ceil(log(1 - u) / log(1 - p)))
+	if maxVal is not None:
+		sampledValue = min(maxVal, sampledValue)
+	return sampledValue
 
 
 def sampleNCG(year):
@@ -81,8 +87,8 @@ def sampleNCG(year):
 	pSum = pSumNcg[year - 2013]
 
 	# 2. Get two independent samples from truncated geometric distribution
-	seed0 = getTruncGeom(p, pSum)
-	seed1 = getTruncGeom(p, pSum)
+	seed0 = getTruncGeom(p, pSum, maxVal=16)
+	seed1 = getTruncGeom(p, pSum, maxVal=16)
 
 	return [seed0, seed1]
 
@@ -108,7 +114,7 @@ def sampleF4(year):
 	# 2. Get four independent samples from trunc. geom. distribution
 	seeds = []
 	for regionIndex in range(4):
-		seeds.append(getTruncGeom(p, pSum))
+		seeds.append(getTruncGeom(p, pSum, maxVal=16))
 
 	return seeds
 
@@ -139,7 +145,7 @@ def sampleF4adjusted11(year):
 		if random.random() < prob11:
 			seeds.append(11)
 		else:
-			seeds.append(getTruncGeom(p, pSum))
+			seeds.append(getTruncGeom(p, pSum, maxVal=16))
 
 	return seeds
 
@@ -167,9 +173,9 @@ def sampleE8(year):
 	# 2. Get four independent samples each from top and bottom distributions
 	seeds = []
 	for regionIndex in range(4):
-		topSeedIndex = getTruncGeom(pTop, pSumTop) - 1
+		topSeedIndex = getTruncGeom(pTop, pSumTop, maxVal=8) - 1
 		seeds.append(TOP_SEEDS_SORTED[topSeedIndex])
-		bottomSeedIndex = getTruncGeom(pBottom, pSumBottom) - 1
+		bottomSeedIndex = getTruncGeom(pBottom, pSumBottom, maxVal=8) - 1
 		seeds.append(BOTTOM_SEEDS_SORTED[bottomSeedIndex])
 
 	return seeds
