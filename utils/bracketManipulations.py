@@ -105,8 +105,10 @@ def aggregate(brackets):
         for r in range(1, 7):
             round_seeds = seeds[r]
             for game_id, winner in enumerate(round_seeds):
-                s1 = min(seeds[r - 1][game_id * 2], seeds[r - 1][game_id * 2 + 1])
-                s2 = max(seeds[r - 1][game_id * 2], seeds[r - 1][game_id * 2 + 1])
+                firstSeed = seeds[r - 1][game_id * 2]
+                secondSeed = seeds[r - 1][game_id * 2 + 1]
+                s1 = min(firstSeed, secondSeed)
+                s2 = max(firstSeed, secondSeed)
                 matchup = (s1, s2)
                 counts[r][matchup][winner] += 1
     return counts
