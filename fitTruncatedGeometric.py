@@ -17,8 +17,6 @@ from fitPowerModel import load_ref_brackets
 # historical tournament data and outputs optimized parameters.
 # 
 ######################################################################
-# The golden ratio
-phi = (1 + 5 ** 0.5) / 2
 
 def calcAllRoundCounts(brackets):
     # TODO: document
@@ -109,6 +107,29 @@ def optimizeF4(roundCounts):
     """
     freq11, pChoose11, chiSq = optimizeModFreq(actualFreqs=np.copy(roundCounts[5, :]), modifiedSeed=11, maxVal=16)
     return freq11, pChoose11, chiSq
+
+
+def fitTruncGeomF4top6(roundCounts):
+    """Fits the truncated geometric distribution to 
+       the historical distribution of seeds 1 to 6 
+       in the Final Four. Used by the F4_B model. 
+
+       Parameters
+       ----------
+       roundCounts : 2-D array
+           See calcAllRoundCounts for definition
+
+       Returns
+       -------
+       p : float
+           The truncated geometric parameter (probability of success)
+       pSum : float
+           The sum of the geometric probabilities for the top 6 seeds 
+           (needed to sample from the truncated geometric distribution 
+           by inversion) 
+    """
+    p, pSum, pdf = getTruncatedGeometricPdf(actualCounts=np.copy(roundCounts[5, :7]), maxVal=6)
+    return p, pSum, pdf
 
 
 def optimizeNCG(roundCounts):
@@ -238,70 +259,24 @@ def optimizeModFreq(actualFreqs, modifiedSeed, maxVal):
     totalCountActual = np.sum(actualFreqs)
     freqs = np.copy(actualFreqs)
     freqLB = 0
-    freqUB = actualFreqs[modifiedSeed]
-    freqVals = np.array([freqLB, freqUB - round((freqUB - freqLB) / phi), round((freqUB - freqLB) / phi) + freqLB, freqUB])
+    freqUB = int(actualFreqs[modifiedSeed])
 
-    # Check for matching or swapped interior points, adjust to avoid this scenario
-    if freqVals[1] >= freqVals[2]:
-        if freqVals[1] > freqVals[0]:
-            freqVals[1] -= 1
-        else:
-            freqVals[2] += 1
+    # Find modified frequency that minimizes chi-squared
+    bestChiSq = 1e6
+    bestFreq = 0
+    for newFreq in range(freqLB, freqUB + 1):
+        freqs[modifiedSeed] = newFreq
+        newChiSq = calcAdjustedChiSquared(modFreqs=freqs, actualFreqs=actualFreqs, maxVal=maxVal, modifiedSeed=modifiedSeed)
+        if newChiSq < bestChiSq:
+            bestChiSq = newChiSq
+            bestFreq = newFreq
 
-    # Chi-squared values at lower bound, lower internal point, 
-    # upper internal point, and upper bound (initialize big)
-    chiSqVals = np.ones(4) * 10000000.
-
-
-    # Compute chi-squared values at endpoints
-    for i in [0, 3]:
-        freqs[modifiedSeed] = freqVals[i]
-        chiSqVals[i] = calcAdjustedChiSquared(modFreqs=freqs, actualFreqs=actualFreqs, maxVal=maxVal, modifiedSeed=modifiedSeed)
-
-    # import pdb; pdb.set_trace()
-
-    # Golden-section search for optimal modified frequency
-    while max(freqVals[3] - freqVals[2], freqVals[2] - freqVals[1], freqVals[1] - freqVals[0]) > 1:
-        # Compute chi-squared values at interior points
-        for i in [1, 2]:
-            freqs[modifiedSeed] = freqVals[i]
-            chiSqVals[i] = calcAdjustedChiSquared(modFreqs=freqs, actualFreqs=actualFreqs, maxVal=maxVal, modifiedSeed=modifiedSeed)
-
-        # pdb.set_trace()
-
-        # Update endpoints and interior points
-        minIndex = np.argmin(chiSqVals)
-        if minIndex <= 1:
-            # Discard right endpoint, choose new left interior point
-            freqVals[1:] = freqVals[0:3]
-            chiSqVals[1:] = chiSqVals[0:3]
-            freqVals[1] = freqVals[3] - round((freqVals[3] - freqVals[0]) / phi)
-        else: # minIndex is 2 or 3
-            # Discard left endpoint, choose new right interior point
-            freqVals[0:3] = freqVals[1:]
-            chiSqVals[0:3] = chiSqVals[1:]
-            freqVals[2] = round((freqVals[3] - freqVals[0]) / phi) + freqVals[0]
-            
-
-        # Check for matching interior points, adjust to avoid this scenario
-        if freqVals[1] == freqVals[2]:
-            if freqVals[1] > freqVals[0]:
-                freqVals[1] -= 1
-            else:
-                freqVals[2] += 1
-
-    for i in [1, 2]: # Update interior point values just in case
-        freqs[modifiedSeed] = freqVals[i]
-        chiSqVals[i] = calcAdjustedChiSquared(modFreqs=freqs, actualFreqs=actualFreqs, maxVal=maxVal, modifiedSeed=modifiedSeed)
-    
-    # pdb.set_trace()
-
-    modFreq = int(freqVals[np.argmin(chiSqVals)])
-    freqs[modifiedSeed] = modFreq
+    freqs[modifiedSeed] = bestFreq
     p, pSum, pdf = getTruncatedGeometricPdf(freqs, maxVal=maxVal)
     pChooseModSeed = (actualFreqs[modifiedSeed] - pdf[modifiedSeed] * totalCountActual) / (totalCountActual * (1 - pdf[modifiedSeed]))
     chiSq = calcAdjustedChiSquared(modFreqs=freqs, actualFreqs=actualFreqs, maxVal=maxVal, modifiedSeed=modifiedSeed)
-    return modFreq, pChooseModSeed, chiSq
+
+    return bestFreq, pChooseModSeed, chiSq
 
 
 if __name__ == '__main__':
@@ -378,8 +353,8 @@ if __name__ == '__main__':
         sys.stdout.write(',{0:.4f},{1:.4f},{3:.4f},{2:.4f},,\n'.format(pMod, pSumMod, chiSq11_E8, pChoose11_E8))
         print()
 
-    # Print F4 results
-    print('Final Four,Modified 11')
+    # Print F4_A results
+    print('Final Four A,Modified 11')
     for year in range(minYear, maxYear + 1):
         print(year)
         roundCountsYear = roundCounts[year - 2013, :, :]
@@ -406,6 +381,36 @@ if __name__ == '__main__':
         print(',p,pSum,,chi-sq. sum,,,p,pSum,pChoose11,chi-sq. sum')
         sys.stdout.write(',{0:.4f},{1:.4f},,{2:.4f},,'.format(p, pSum, chiSquared(freqs[1:], expCounts[1:])))
         sys.stdout.write(',{0:.4f},{1:.4f},{3:.4f},{2:.4f},,\n'.format(pMod, pSumMod, chiSq11_F4, pChoose11_F4))
+        print()
+
+    # Print F4_B results
+    print('Final Four B,Trunc. Geom. for 1-6,two-value distr. for 7-12,13-16 ignored')
+    for year in range(minYear, maxYear + 1):
+        print(year)
+        roundCountsYear = roundCounts[year - 2013, :, :]
+        freqsTop6 = roundCountsYear[5, :7]
+        sumFreqsTop6 = np.sum(freqsTop6)
+        p, pSum, pdfTop6 = fitTruncGeomF4top6(roundCountsYear)
+        expCountsTop6 = pdfTop6 * sumFreqsTop6
+
+        freqsBottom6 = roundCountsYear[5, 7:13]
+        sumFreqsBottom6 = np.sum(freqsBottom6)
+        pdfBottom6 = np.array([2./9, 2./9, 1./9, 1./9, 2./9, 1./9]) # index 0 is for 7-seed
+        expCountsBottom6 = pdfBottom6 * sumFreqsBottom6
+
+        proportionTop6 = sumFreqsTop6 * 1. / (sumFreqsTop6 + sumFreqsBottom6)
+        print('Pr(sample 1-6),{0:.4f},Pr(sample 7-12),{1:.4f}'.format(proportionTop6, 1 - proportionTop6))
+        print('Seed,Count,TG pdf,Exp. Count,Chi-Squared,,Seed,Count,Custom pdf,Exp. Count,Chi-Squared,,')
+        for index in range(1, 7):
+            chiSqTop6 = (freqsTop6[index] - expCountsTop6[index]) ** 2 / expCountsTop6[index]
+            chiSqBottom6 = (freqsBottom6[index - 1] - expCountsBottom6[index - 1]) ** 2 / expCountsBottom6[index - 1]
+            sys.stdout.write('{0},{1},{2:.4f},{3:.4f},{4:.4f},,'.format(index, freqsTop6[index], pdfTop6[index], expCountsTop6[index], chiSqTop6))
+            sys.stdout.write('{0},{1},{2:.4f},{3:.4f},{4:.4f},,'.format(index + 6, freqsBottom6[index - 1], pdfBottom6[index - 1], expCountsBottom6[index - 1], chiSqBottom6))
+            sys.stdout.write('\n')
+        
+        print(',p,pSum,,chi-sq. sum,,,,,,chi-sq. sum')
+        sys.stdout.write(',{0:.4f},{1:.4f},,{2:.4f},,'.format(p, pSum, chiSquared(freqsTop6[1:], expCountsTop6[1:])))
+        sys.stdout.write(',,,,{0:.4f},,\n'.format(chiSquared(freqsBottom6, expCountsBottom6)))
         print()
 
     # Print NCG results
