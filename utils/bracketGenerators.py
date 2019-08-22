@@ -292,11 +292,11 @@ if __name__ == '__main__':
     testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
     print(scoreBracket(testNcgBracket, year=2019))
 
-    testF4Bracket = generateBracketPower(2019, 5, 'sampleF4')
-    print(scoreBracket(testF4Bracket, year=2019))
+    testF4ABracket = generateBracketPower(2019, 5, 'sampleF4A')
+    print(scoreBracket(testF4ABracket, year=2019))
 
-    testF4adjusted11Bracket = generateBracketPower(2019, 5, 'sampleF4adjusted11')
-    print(scoreBracket(testF4adjusted11Bracket, year=2019))
+    testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
+    print(scoreBracket(testF4BBracket, year=2019))
 
     testE8Bracket = generateBracketPower(2019, 4, 'sampleE8')
     print(scoreBracket(testE8Bracket))

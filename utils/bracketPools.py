@@ -111,13 +111,13 @@ def runSamples(nReplications, sampleSize):
 		createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
 			samplingFnName='sampleE8', nReplications=nReplications)
 
-		# Power: r = 5, sampleF4
+		# Power: r = 5, sampleF4A
 		createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-			samplingFnName='sampleF4', nReplications=nReplications)
+			samplingFnName='sampleF4A', nReplications=nReplications)
 
-		# Power: r = 5, sampleF4adjusted11
+		# Power: r = 5, sampleF4B
 		createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-			samplingFnName='sampleF4adjusted11', nReplications=nReplications)
+			samplingFnName='sampleF4B', nReplications=nReplications)
 
 		# Power: r = 6
 		createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
@@ -143,9 +143,9 @@ def readAndScore(nReplications, sampleSize):
 		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=4, 
 			samplingFnName='sampleE8', nReplications=nReplications))
 		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-			samplingFnName='sampleF4', nReplications=nReplications))
+			samplingFnName='sampleF4A', nReplications=nReplications))
 		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-			samplingFnName='sampleF4adjusted11', nReplications=nReplications))
+			samplingFnName='sampleF4B', nReplications=nReplications))
 		filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
 			samplingFnName='sampleNCG', nReplications=nReplications))
 
@@ -170,7 +170,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None):
 	"""Saves the Max Score and ESPN Count results for a set of replications
 	   to a CSV file.
 	"""
-	modelHeaders = 'Replication,B-T,Power R64,Power E8,Power F4,Power F4 Adj 11,Power NCG'
+	modelHeaders = 'Replication,B-T,Power R64,Power E8,Power F4_A,Power F4_B,Power NCG'
 	print(year)
 	print('Max Scores')
 	print(modelHeaders)

@@ -279,7 +279,7 @@ def optimizeModFreq(actualFreqs, modifiedSeed, maxVal):
     return bestFreq, pChooseModSeed, chiSq
 
 
-if __name__ == '__main__':
+def printAllTables():
     minYear = 2013
     maxYear = 2020
     nYears = maxYear - minYear + 1
@@ -442,3 +442,95 @@ if __name__ == '__main__':
         sys.stdout.write(',{0:.4f},{1:.4f},,{2:.4f},,'.format(p, pSum, chiSquared(freqs[1:], expCounts[1:])))
         sys.stdout.write(',{0:.4f},{1:.4f},{3:.4f},{2:.4f},,\n'.format(pMod, pSumMod, chiSq8_NCG, pChoose8_NCG))
         print()
+
+
+def printParametersOnly():
+    minYear = 2013
+    maxYear = 2020
+    nYears = maxYear - minYear + 1
+
+    bracketsAll = load_ref_brackets()
+    roundCounts = np.zeros((nYears, 8, 17))
+    for year in range(minYear, maxYear + 1):
+        bracketsBeforeYear = [b for x, b in bracketsAll.items() if x < year]
+        roundCounts[year - 2013, :, :] = calcAllRoundCounts(bracketsBeforeYear)
+
+    # Print E8 parameters
+    print('Elite Eight,Modified 1 and 11')
+    print('year,modFreq1,pTop,pSumTop,pChoose1,modFreq11,pBot,pSumBot,pChoose11')
+    for year in range(minYear, maxYear + 1):
+        roundCountsYear = roundCounts[year - 2013, :, :]
+        freqs = roundCountsYear[4, :]
+        topSeeds = [1, 4, 5, 8, 9, 12, 13, 16]
+        bottomSeeds = [2, 3, 6, 7, 10, 11, 14, 15]
+        topFreqs = [0] + [int(freqs[i]) for i in topSeeds]
+        bottomFreqs = [0] + [int(freqs[i]) for i in bottomSeeds]
+        sumTopFreqs = np.sum(topFreqs)
+        sumBottomFreqs = np.sum(bottomFreqs)
+
+        freq1_E8, pChoose1_E8, chiSq1_E8, freq11_E8, pChoose11_E8, chiSq11_E8 = optimizeE8(roundCountsYear)
+        
+        # Print 'top' parameters
+        modTopFreqs = np.copy(topFreqs)
+        modTopFreqs[1] = freq1_E8
+        pMod, pSumMod, pdfMod = getTruncatedGeometricPdf(actualCounts=modTopFreqs, maxVal=8)
+        sys.stdout.write('{0},{1},{2:.4f},{3:.4f},{4:.4f},'.format(year, freq1_E8, pMod, pSumMod, pChoose1_E8))
+
+        # Print 'bottom' parameters
+        modBottomFreqs = np.copy(bottomFreqs)
+        modBottomFreqs[6] = freq11_E8 # 6 is index of 11 in bottomSeeds
+        pMod, pSumMod, pdfMod = getTruncatedGeometricPdf(actualCounts=modBottomFreqs, maxVal=8)
+        
+        sys.stdout.write('{0},{1:.4f},{2:.4f},{3:.4f}\n'.format(freq11_E8, pMod, pSumMod, pChoose11_E8))
+    print()
+
+    # Print F4_A parameters
+    print('Final Four A,Modified 11')
+    print('year,modFreq11,p,pSum,pChoose11')
+    for year in range(minYear, maxYear + 1):
+        roundCountsYear = roundCounts[year - 2013, :, :]
+        freqs = roundCountsYear[5, :]
+        sumFreqs = np.sum(freqs)
+        freq11_F4, pChoose11_F4, chiSq11_F4 = optimizeF4(roundCountsYear)
+        modFreqs = np.copy(freqs)
+        modFreqs[11] = freq11_F4
+        p, pSum, pdf = getTruncatedGeometricPdf(actualCounts=freqs, maxVal=16)
+        pMod, pSumMod, pdfMod = getTruncatedGeometricPdf(actualCounts=modFreqs, maxVal=16)
+        expCounts = pdf * sumFreqs
+        newPdf = pdf * (1 - pChoose11_F4)
+        newPdf[11] += pChoose11_F4
+        print('{0},{1},{2:.4f},{3:.4f},{4:.4f}'.format(year, freq11_F4, pMod, pSumMod, pChoose11_F4))
+    print()
+
+    # Print F4_B parameters
+    print('Final Four B,Trunc. Geom. for 1-6,two-value distr. for 7-12,13-16 ignored')
+    print('year,p,pSum,propTop6')
+    for year in range(minYear, maxYear + 1):
+        roundCountsYear = roundCounts[year - 2013, :, :]
+        freqsTop6 = roundCountsYear[5, :7]
+        freqsBottom6 = roundCountsYear[5, 7:13]
+        sumFreqsTop6 = np.sum(freqsTop6)
+        sumFreqsBottom6 = np.sum(freqsBottom6)
+        p, pSum, pdfTop6 = fitTruncGeomF4top6(roundCountsYear)
+        proportionTop6 = sumFreqsTop6 * 1. / (sumFreqsTop6 + sumFreqsBottom6)
+        print('{0},{1:.4f},{2:.4f},{3:.4f}'.format(year, p, pSum, proportionTop6))
+    print()
+
+    # Print NCG parameters
+    print('National Championship Game,Modified 8')
+    print('year,modFreq8,p,pSum,pChoose8')
+    for year in range(minYear, maxYear + 1):
+        roundCountsYear = roundCounts[year - 2013, :, :]
+        freqs = roundCountsYear[6, :9]
+        sumFreqs = np.sum(freqs)
+        freq8_NCG, pChoose8_NCG, chiSq8_NCG = optimizeNCG(roundCountsYear)
+        modFreqs = np.copy(freqs)
+        modFreqs[8] = freq8_NCG
+        pMod, pSumMod, pdfMod = getTruncatedGeometricPdf(actualCounts=modFreqs, maxVal=8)
+        
+        print('{0},{1},{2:.4f},{3:.4f},{4:.4f}'.format(year, freq8_NCG, pMod, pSumMod, pChoose8_NCG))
+    print()
+
+if __name__ == '__main__':
+    printParametersOnly()
+    # printAllTables()
