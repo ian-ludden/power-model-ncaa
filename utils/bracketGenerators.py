@@ -2,7 +2,7 @@ from collections import defaultdict
 import os
 import random
 
-from bracketManipulations import applyRoundResults
+from bracketManipulations import applyRoundResults, bracketToSeeds
 import fileUtils
 import samplingFunctions
 from scoringFunctions import scoreBracket
@@ -170,9 +170,12 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
         for gameNum in range(numGames):
             seed1 = seeds[2 * gameNum]
             seed2 = seeds[2 * gameNum + 1]
-            if seed1 == fixedChampion or seed1 == fixedTopE8 or seed1 == fixedBottomE8:
+
+            isSeed1WinAutomatically = (seed1 == fixedChampion) or (roundNum < 4 and (seed1 == fixedTopE8 or seed1 == fixedBottomE8))
+            isSeed2WinAutomatically = (seed2 == fixedChampion) or (roundNum < 4 and (seed2 == fixedTopE8 or seed2 == fixedBottomE8))
+            if isSeed1WinAutomatically:
                 p = 1.
-            elif seed2 == fixedChampion or seed2 == fixedTopE8 or seed2 == fixedBottomE8:
+            elif isSeed2WinAutomatically:
                 p = 0.
             else:
                 p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model=model)
@@ -286,20 +289,36 @@ def generateBracketBradleyTerry(year):
 
 
 if __name__ == '__main__':
-    testPowerBracket = generateBracketPower(2019, 1)
-    print(scoreBracket(testPowerBracket, year=2019))
+    # testPowerBracket = generateBracketPower(2019, 1)
+    # print(scoreBracket(testPowerBracket, year=2019))
 
-    testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
-    print(scoreBracket(testNcgBracket, year=2019))
+    # # import pdb; pdb.set_trace()
 
-    testF4ABracket = generateBracketPower(2019, 5, 'sampleF4A')
-    print(scoreBracket(testF4ABracket, year=2019))
+    # # testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
+    # # print(scoreBracket(testNcgBracket, year=2019))
 
-    testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
-    print(scoreBracket(testF4BBracket, year=2019))
+    # # import pdb; pdb.set_trace()
 
-    testE8Bracket = generateBracketPower(2019, 4, 'sampleE8')
-    print(scoreBracket(testE8Bracket))
+    # # testF4ABracket = generateBracketPower(2019, 5, 'sampleF4A')
+    # # print(scoreBracket(testF4ABracket, year=2019))
 
-    testBradleyTerryBracket = generateBracketBradleyTerry(2019)
-    print(scoreBracket(testBradleyTerryBracket, year=2019))
+    # # import pdb; pdb.set_trace()
+
+    # # testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
+    # # print(scoreBracket(testF4BBracket, year=2019))
+
+    # import pdb; pdb.set_trace()
+
+    SAMPLE_SIZE = 10000
+    year = 2016
+    for i in range(SAMPLE_SIZE):
+        testE8Bracket = generateBracketPower(year, 4, 'sampleE8')
+        scores = scoreBracket(testE8Bracket, year=year)
+        # if 2 in seedsPerRound[4] or scores[0] > 950: 
+        if scores[0] > 1600:
+            print(scores, bracketToSeeds(testE8Bracket))
+
+    # import pdb; pdb.set_trace()
+
+    # testBradleyTerryBracket = generateBracketBradleyTerry(2019)
+    # print(scoreBracket(testBradleyTerryBracket, year=2019))

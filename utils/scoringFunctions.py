@@ -33,7 +33,7 @@ espnCutoffs = {
 	'2013': 1590
 }
 
-def scoreBracket(bracketVector, actualResultsVector=None, year=2013, isPickFavorite=False):
+def scoreBracket(bracketVector, actualResultsVector=None, year=2020, isPickFavorite=False):
 	"""Scores the given bracket vector according to the 
 	   ESPN Bracket Challenge scoring system. The isPickFavorite
 	   flag indicates whether the bracket being scored is from the
