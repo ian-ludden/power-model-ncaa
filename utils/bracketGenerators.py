@@ -2,7 +2,7 @@ from collections import defaultdict
 import os
 import random
 
-from bracketManipulations import applyRoundResults, bracketToSeeds
+import bracketManipulations as bm
 import fileUtils
 import samplingFunctions
 from scoringFunctions import scoreBracket
@@ -126,7 +126,7 @@ def generateBracketPower(year, r, samplingFnName=None):
     f4Result1 = 1 if random.random() < winProb1 else 0
     bracket.append(f4Result0)
     bracket.append(f4Result1)
-    ncgSeeds = applyRoundResults(f4Seeds, [f4Result0, f4Result1])
+    ncgSeeds = bm.applyRoundResults(f4Seeds, [f4Result0, f4Result1])
 
     # NCG
     ncgTeam0 = {'seed': ncgSeeds[0], 'region': -1}
@@ -280,12 +280,24 @@ def generateBracketBradleyTerry(year):
     bracket.append(f4Result0)
     bracket.append(f4Result1)
 
-    ncgSeeds = applyRoundResults(f4Seeds, [f4Result0, f4Result1])
+    ncgSeeds = bm.applyRoundResults(f4Seeds, [f4Result0, f4Result1])
     winProb = getWinProbability({'seed': ncgSeeds[0]}, {'seed': ncgSeeds[1]}, r=5, year=year, model='bradley-terry')
     ncgResult = 1 if random.random() < winProb else 0
     bracket.append(ncgResult)
 
     return bracket
+
+
+def generateBracketsPickFavorite():
+    """Returns the pool of eight pick favorite brackets."""
+    brackets = []
+    regionHex = '7fc5'
+    bracketString = bm.hexToString(regionHex) * 4
+    for i in range(8):
+        fullString = bracketString + '{0:03b}'.format(i)
+        brackets.append(bm.stringToVector(fullString))
+
+    return brackets
 
 
 if __name__ == '__main__':
@@ -309,16 +321,22 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    SAMPLE_SIZE = 10000
-    year = 2016
-    for i in range(SAMPLE_SIZE):
-        testE8Bracket = generateBracketPower(year, 4, 'sampleE8')
-        scores = scoreBracket(testE8Bracket, year=year)
-        # if 2 in seedsPerRound[4] or scores[0] > 950: 
-        if scores[0] > 1600:
-            print(scores, bracketToSeeds(testE8Bracket))
+    # SAMPLE_SIZE = 10000
+    # year = 2016
+    # for i in range(SAMPLE_SIZE):
+    #     testE8Bracket = generateBracketPower(year, 4, 'sampleE8')
+    #     scores = scoreBracket(testE8Bracket, year=year)
+    #     # if 2 in seedsPerRound[4] or scores[0] > 950: 
+    #     if scores[0] > 1600:
+    #         print(scores, bm.bracketToSeeds(testE8Bracket))
 
     # import pdb; pdb.set_trace()
 
     # testBradleyTerryBracket = generateBracketBradleyTerry(2019)
     # print(scoreBracket(testBradleyTerryBracket, year=2019))
+
+    pickFavoriteBrackets = generateBracketsPickFavorite()
+    print('Year,Max PF Score')
+    for year in range(2013, 2020):
+        pfScores = [scoreBracket(pickFavoriteBrackets[i], year=year)[0] for i in range(8)]
+        print('{0},{1}'.format(year, max(pfScores)))
