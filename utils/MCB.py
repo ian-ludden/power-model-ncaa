@@ -23,11 +23,12 @@ import scoringFunctions as sf
 ######################################################################
 
 def loadResults(nReplications=25, sampleSize=50000, filepath=None):
-	"""Loads the CSV file containing the max scores and ESPN counts."""
-	YEAR_OFFSET = 7 + 2 * nReplications # Number of rows per year in the CSV file.
+	"""Loads the CSV file containing the max scores, ESPN counts, and pick favorite proportions."""
+	YEAR_OFFSET = 10 + 3 * nReplications # Number of rows per year in the CSV file.
 
 	maxScores = np.zeros((6, 7, nReplications)) # Indexed by model, year-2013, and replication
 	espnCounts = np.zeros((6, 7, nReplications))
+	pfProps = np.zeros((6, 7, nReplications))
 
 	if filepath is None:
 		return [maxScores, espnCounts]
@@ -51,7 +52,13 @@ def loadResults(nReplications=25, sampleSize=50000, filepath=None):
 			for colIndex in range(1, 7):
 				espnCounts[colIndex - 1][year - 2013][rowIndex - startEspnCounts] = int(data[rowIndex][colIndex])
 
-	return [maxScores, espnCounts]
+		startPfProps = endEspnCounts + 3
+		endPfProps = startPfProps + nReplications
+		for rowIndex in range(startPfProps, endPfProps):
+			for colIndex in range(1, 7):
+				pfProps[colIndex - 1][year - 2013][rowIndex - startPfProps] = float(data[rowIndex][colIndex])
+
+	return [maxScores, espnCounts, pfProps]
 
 
 def unbiased_std(matrix):
@@ -94,7 +101,7 @@ def runMCB(nReplications=25, sampleSize=50000, filepath=None):
 	"""Runs Hsu's mutliple comparisons with the best (MCB) procedure 
 	   to compare the performance of the different models for each year/metric.
 	"""
-	maxScores, espnCounts = loadResults(nReplications=nReplications, sampleSize=sampleSize, filepath=filepath)
+	maxScores, espnCounts, pfProps = loadResults(nReplications=nReplications, sampleSize=sampleSize, filepath=filepath)
 
 	for year in range(2013, 2020):
 		print(year)
@@ -131,6 +138,13 @@ def runMCB(nReplications=25, sampleSize=50000, filepath=None):
 		for modelIndex in range(6):
 			sys.stdout.write('{0:.2f},'.format(upperBounds[modelIndex]))
 		sys.stdout.write('\n\n')
+
+		pfPropsMatrix = pfProps[:, yearIndex, :].reshape((6, nReplications))
+		pfPropMeans = pfPropsMatrix.mean(axis=1)
+		sys.stdout.write('PF Proportions,\nAverage,')
+		for modelIndex in range(6):
+			sys.stdout.write('{0:.5f},'.format(pfPropMeans[modelIndex]))
+		sys.stdout.write('\n')
 
 
 if __name__ == '__main__':
