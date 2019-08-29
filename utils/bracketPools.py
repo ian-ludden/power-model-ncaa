@@ -133,7 +133,9 @@ def readAndScore(nReplications, sampleSize):
 	for year in range(2013, 2020):
 		maxScores = np.zeros((6, nReplications))
 		espnCounts = np.zeros((6, nReplications))
+		pfProps = np.zeros((6, nReplications))
 		minEspnScore = sf.espnCutoffs[str(year)]
+		maxPfScore = sf.pickFavoriteScore[str(year)]
 		
 		filepaths = []
 		filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
@@ -162,12 +164,13 @@ def readAndScore(nReplications, sampleSize):
 
 				maxScores[fIndex][repIndex] = np.max(scores)
 				espnCounts[fIndex][repIndex] = (scores >= minEspnScore).sum()
+				pfProps[fIndex][repIndex] = (scores >= maxPfScore).sum() * 1. / sampleSize
 
-		printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts)
+		printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts, pfProps=pfProps)
 
 
-def printResultsTables(year=2020, maxScores=None, espnCounts=None):
-	"""Saves the Max Score and ESPN Count results for a set of replications
+def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None):
+	"""Saves the Max Score, ESPN Count, and PF proportion results for a set of replications
 	   to a CSV file.
 	"""
 	modelHeaders = 'Replication,B-T,Power R64,Power E8,Power F4_A,Power F4_B,Power NCG'
@@ -190,10 +193,19 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None):
 		sys.stdout.write('\n')
 
 	print()
+	print('Pick Favorite Proportions')
+	print(modelHeaders)
+	for repIndex in range(pfProps.shape[1]):
+		sys.stdout.write('{0},'.format(repIndex))
+		for modelIndex in range(6):
+			sys.stdout.write('{0:.6f},'.format(pfProps[modelIndex][repIndex]))
+		sys.stdout.write('\n')
+
+	print()
 
 
 if __name__ == '__main__':
 	sampleSize = 50000
 	nReplications = 25
-	runSamples(nReplications=nReplications, sampleSize=sampleSize)
+	# runSamples(nReplications=nReplications, sampleSize=sampleSize)
 	readAndScore(nReplications=nReplications, sampleSize=sampleSize)

@@ -33,6 +33,17 @@ espnCutoffs = {
 	'2013': 1590
 }
 
+# Maximum scores from pick favorite pool
+pickFavoriteScore = {
+	'2019': 1240, 
+	'2018': 1130, 
+	'2017': 1460, 
+	'2016': 870, 
+	'2015': 1530, 
+	'2014': 680, 
+	'2013': 1120
+}
+
 def scoreBracket(bracketVector, actualResultsVector=None, year=2020, isPickFavorite=False):
 	"""Scores the given bracket vector according to the 
 	   ESPN Bracket Challenge scoring system. The isPickFavorite
