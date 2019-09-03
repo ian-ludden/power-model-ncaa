@@ -204,8 +204,31 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None)
 	print()
 
 
+def getScoreDistribution(nReplications=None, sampleSize=None, filepath=None):
+	"""Tallies and prints the distribution of scores for all brackets in the given filepath."""
+
+
+
 if __name__ == '__main__':
 	sampleSize = 50000
 	nReplications = 25
 	# runSamples(nReplications=nReplications, sampleSize=sampleSize)
-	readAndScore(nReplications=nReplications, sampleSize=sampleSize)
+	# readAndScore(nReplications=nReplications, sampleSize=sampleSize)
+	year = 2016
+	filepath = generateFilepath(sampleSize, year=year, model='power', 
+			nReplications=nReplications)
+	with open(filepath, 'r') as f:
+		data = json.load(f)
+
+	scoreTallies = np.zeros(193)
+
+	brackets = data['brackets']
+	for repIndex, sample in enumerate(brackets):
+		scores = np.zeros(sampleSize)
+		for bracketIndex, bracketHex in enumerate(sample):
+			bracketVector = bm.stringToVector(bm.hexToString(bracketHex))
+			scores[bracketIndex] = sf.scoreBracket(bracketVector, year=year)[0]
+			scoreTallies[int(scores[bracketIndex]) // 10] += 1
+
+	for scoreDivTen in range(0, 193):
+		print('{0},{1:.0f}'.format(scoreDivTen * 10, scoreTallies[scoreDivTen]))

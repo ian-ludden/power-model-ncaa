@@ -69,6 +69,9 @@ def fit(limit_year):
             if i == j:
                 continue
             p[i, j] = beta[i] / (beta[i] + beta[j])
+
+    print(beta)
+
     return p
 
 
@@ -77,14 +80,16 @@ if __name__ == '__main__':
     if not os.path.exists('bradleyTerry'):
         os.makedirs('bradleyTerry')
 
-    with open('btParams.csv', 'w') as f:
-        for year in range(2013, 2021):
-            f.write('{0}\n'.format(year))
-            p = fit(limit_year=year)
-            for i in range(16):
-                for j in range(16):
-                    if i == j:
-                        f.write('0.5000,')
-                    else:
-                        f.write('{0:.4f},'.format(p[i, j]))
-                f.write('\n')
+    # with open('btParams.csv', 'w') as f:
+    #     for year in range(2013, 2021):
+    #         f.write('{0}\n'.format(year))
+    #         p = fit(limit_year=year)
+    #         for i in range(16):
+    #             for j in range(16):
+    #                 if i == j:
+    #                     f.write('0.5000,')
+    #                 else:
+    #                     f.write('{0:.4f},'.format(p[i, j]))
+    #             f.write('\n')
+    for year in range(2013, 2021):
+        p = fit(limit_year=year)

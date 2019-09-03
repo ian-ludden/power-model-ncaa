@@ -153,7 +153,7 @@ def prettifyRegionVector(regionHex):
     """Returns a more descriptive string for the 
        given 4-digit hex representation of a region vector. 
     """
-    regionVector = bm.stringToVector(bm.hexToString(regionHex))
+    regionVector = stringToVector(hexToString(regionHex))
     seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
     r1Winners = applyRoundResults(seeds, regionVector[:8])
     r2Winners = applyRoundResults(r1Winners, regionVector[8:12])

@@ -70,7 +70,6 @@ def optimizeE8(roundCounts):
            The chi-squared goodness-of-fit test statistic 
            for the bottom E8 sampling distribution against actualFreqs
     """
-    # TODO
     actualFreqs = np.copy(roundCounts[4, :])
     topSeeds = [1, 4, 5, 8, 9, 12, 13, 16]
     bottomSeeds = [2, 3, 6, 7, 10, 11, 14, 15]
