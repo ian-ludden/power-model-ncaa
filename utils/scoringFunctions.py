@@ -1,4 +1,4 @@
-from .bracketManipulations import applyRoundResults
+from bracketManipulations import applyRoundResults
 
 ######################################################################
 # Author: 	Ian Ludden

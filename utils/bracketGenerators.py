@@ -22,8 +22,15 @@ BOTTOM_SEEDS = [6, 11, 3, 14, 7, 10, 2, 15]
 
 # Filenames for power and Bradley-Terry model parameters
 HOME_DIR = os.path.expanduser('~')
+
 POWER_FILENAME = '{0}/Documents/GitHub/power-model-ncaa/powerParams.csv'.format(HOME_DIR)
 BT_FILENAME = '{0}/Documents/GitHub/power-model-ncaa/btParams.csv'.format(HOME_DIR)
+
+# My paths
+POWER_FILENAME = '{0}/Documents/Research/Sheldon Jacobson/power-model-ncaa/powerParams.csv'.format(HOME_DIR)
+BT_FILENAME = '{0}/Documents/Research/Sheldon Jacobson/power-model-ncaa//btParams.csv'.format(HOME_DIR)
+
+
 
 # Array for storing power model Round 1 alpha values
 R1_ALPHAS = None
@@ -38,7 +45,7 @@ BT_PROBS = None
 
 def generateBracketPower(year, r, samplingFnName=None):
     """Generates a bracket for the given year using the power model. 
-       The given sampling function is used to sample the seeds which reach round r.
+       The given sampling function is used to sample the seeds which reach round r. The pseudo code in the paper. 
 
        Parameters
        ----------
@@ -50,7 +57,8 @@ def generateBracketPower(year, r, samplingFnName=None):
        samplingFnName : string
            The name of the sampling function to be used for sampling 
            the seeds which reach round r. 
-           If r is 1, then the sampling function is unnecessary.
+           If r is 1, then the sampling function is unnecessary. R
+.
 
        Returns
        -------
@@ -59,28 +67,42 @@ def generateBracketPower(year, r, samplingFnName=None):
     """
     global TOP_SEEDS
     bracket = []
-
+    
+    # you either let the power model choose for you all before final 4 or everything. The truncated geometric as of now only gives for those in rounds 4 +
+    
     if (r > 1 and r < 4) or (r > 6):
         exit('Round {0} is not supported by generateBracketPower.'.format(r))
 
     # Sample fixed seeds, if necessary
     nSamples = 2 ** (7 - r) if r > 1 else 0
+    # note that if I pick r = 6, that means i want to sample the 2 seeds that will appear in the NCG
+
+
+    # need to call the sampling functions and generate the seeds from those samples' paths in the bracket
+    
     if nSamples > 0:
         samplingFn = getattr(samplingFunctions, samplingFnName)
-        sampledSeeds = samplingFn(year)
+        sampledSeeds = samplingFn(year) #if 
+        # sampledSeeds will be vector of seed values 
+        
+    fixedChampions = [-1 for i in range(4)] # final 4. champs from each region
 
-    fixedChampions = [-1 for i in range(4)]
-    fixedTopE8s = [-1 for i in range(4)]
-    fixedBottomE8s = [-1 for i in range(4)]
+    # each region has two parts, top and bottom
+    fixedTopE8s = [-1 for i in range(4)] #  for each region top part winner
+    fixedBottomE8s = [-1 for i in range(4)] # for each region bot part winner
+    
     # Handle each case of r
     if r == 6: # NCG
         # Fix F4 seeds as needed
         ncgTeam0Region = 0 if random.random() < 0.5 else 1
         ncgTeam1Region = 2 if random.random() < 0.5 else 3
+        # the two sides. Pick one from each side
+        
         fixedChampions[ncgTeam0Region] = sampledSeeds[0]
         fixedChampions[ncgTeam1Region] = sampledSeeds[1]
 
         # Fix E8 seeds as needed
+        # need to propagate backwards the fixed seeds in NCG
         if sampledSeeds[0] in TOP_SEEDS:
             fixedTopE8s[ncgTeam0Region] = sampledSeeds[0]
         else:
@@ -118,17 +140,34 @@ def generateBracketPower(year, r, samplingFnName=None):
             year=year, 
             model='power')
         bracket += regionVector
+
     
+   
+    # [region1,region2,region3,region4]
+        
     # Select outcomes of F4/NCG games (Rounds 5, 6)
     winProb0 = getWinProbability({'seed': f4Seeds[0]}, {'seed': f4Seeds[1]}, r=5, year=year, model='power')
-    winProb1 = getWinProbability({'seed': f4Seeds[0]}, {'seed': f4Seeds[1]}, r=5, year=year, model='power')
+    winProb1 = getWinProbability({'seed': f4Seeds[2]}, {'seed': f4Seeds[3]}, r=5, year=year, model='power')
+    # this place seems wrong
+
+   
     f4Result0 = 1 if random.random() < winProb0 else 0
     f4Result1 = 1 if random.random() < winProb1 else 0
+
+    
+    # NCG case, where F4 results are fixed
+    if r == 6: 
+        f4Winners = [1 if x==y else 0 for (x,y) in zip(f4Seeds,fixedChampions)]
+        f4Result0 = 1 if f4Winners[0] == 1 else 0
+        f4Result1 = 1 if f4Winners[2] == 1 else 0
+    
+
     bracket.append(f4Result0)
     bracket.append(f4Result1)
     ncgSeeds = bm.applyRoundResults(f4Seeds, [f4Result0, f4Result1])
 
     # NCG
+    # when feeding to getWinProbability, only seed value is used
     ncgTeam0 = {'seed': ncgSeeds[0], 'region': -1}
     ncgTeam1 = {'seed': ncgSeeds[1], 'region': -1}
     winProb = getWinProbability(ncgTeam0, ncgTeam1, r=6, year=year, model='power')
@@ -155,7 +194,9 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
        Returns
        -------
        regionVector : list of ints
-           A list of 15 0s and/or 1s representing the game outcomes in the region
+           A list of 15 0s and/or 1s representing the game outcomes in the region, 8-4-2-1
+      
+
        regionWinner : int
            The seed of the regional champion
     """
@@ -164,6 +205,10 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
     seeds = TOP_SEEDS + BOTTOM_SEEDS
 
     # Loop through Rounds 1 (R64), 2 (R32), 3 (S16), and 4 (E8)
+    # 1 is the better seed, 0 the latter
+    # top to bottom matchup wise first, then left to right round wise 
+
+    
     for roundNum in range(1, 5):
         numGames = int(len(seeds) / 2)
         newSeeds = []
@@ -306,7 +351,7 @@ if __name__ == '__main__':
 
     # # import pdb; pdb.set_trace()
 
-    # # testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
+    #testNcgBracket = generateBracketPower(2019, 6, 'sampleNCG')
     # # print(scoreBracket(testNcgBracket, year=2019))
 
     # # import pdb; pdb.set_trace()
@@ -316,8 +361,8 @@ if __name__ == '__main__':
 
     # # import pdb; pdb.set_trace()
 
-    # # testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
-    # # print(scoreBracket(testF4BBracket, year=2019))
+    #testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
+    #print(scoreBracket(testF4BBracket, year=2019))
 
     # import pdb; pdb.set_trace()
 

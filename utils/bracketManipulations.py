@@ -31,6 +31,7 @@ def applyRoundResults(seeds, results):
            the winners of the given round. Same length as results.
     """
     nGames = len(results)
+    # top gets the 1 else bot gets the 1
     newSeeds = [seeds[2 * i] * results[i] + seeds[2 * i + 1] * (1 - results[i]) for i in range(nGames)]
     return newSeeds
 
@@ -102,6 +103,7 @@ def aggregate(brackets):
     counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     for bracket in brackets:
         seeds = bracketToSeeds(bracket)
+        # iterate thru each round. 1 being the results after first round
         for r in range(1, 7):
             round_seeds = seeds[r]
             for game_id, winner in enumerate(round_seeds):
@@ -135,6 +137,7 @@ def stringToHex(bracketString):
     for i in range(nHexDigits):
         nextFourBits = bracketString[4 * i : 4 * i + 4]
         hexString += '{0:1x}'.format(int(nextFourBits, 2))
+        # 0 references the value, 1 is 1 lengthed x (hex)
 
     return hexString
 

@@ -50,6 +50,11 @@ BOTTOM_SEEDS_SORTED = [2, 3, 6, 7, 10, 11, 14, 15]
 
 # Note: All parameters are rounded to four digits after the decimal
 
+
+# pSum is computed via equation (2) in paper. The normalizing constant is 1/pSum.
+
+
+
 # NCG: Truncated geometric parameters for sampling NCG seeds, 
 # from 2013 (index 0) through 2020
 pNcg = [0.4375, 0.4361, 0.4214, 0.4478, 0.4526, 0.4604, 0.4615, 0.4626]
@@ -79,7 +84,8 @@ pE8_choose11 = [0.0249, 0.024, 0.0301, 0.0286, 0.0267, 0.0319, 0.0382, 0.0371]
 
 
 def getTruncGeom(p, pSum, maxVal=None, pFixedSeed=None, fixedSeed=None):
-	"""Samples from a (two-stage) truncated geometric random variable 
+
+        """Samples from a (two-stage) truncated geometric random variable 
 	   with parameter p and probabilities that add to pSum.
 
 	   The formula is derived via inversion. 
@@ -105,18 +111,25 @@ def getTruncGeom(p, pSum, maxVal=None, pFixedSeed=None, fixedSeed=None):
 	   sampledValue : int
 	       A single sample from the two-stage truncated geometric distribution
 	"""
-	# If using two stages, sample fixed seed with probability pFixedSeed
-	if fixedSeed is not None:
-		u = random.random()
-		if u < pFixedSeed:
-			return fixedSeed
+        # If using two stages, sample fixed seed with probability pFixedSeed
+        if fixedSeed is not None:
+                u = random.random()
+                if u < pFixedSeed:
+                        return fixedSeed
 
-	# Sample from truncated geometric by inversion
-	u = random.random()
-	sampledValue = int(ceil(log(1 - u) / log(1 - p)))
-	if maxVal is not None:
-		sampledValue = min(maxVal, sampledValue)
-	return sampledValue
+        # Sample from truncated geometric by inversion
+
+        u = random.random() * pSum
+
+        #sampledValue = int(ceil(log(1 - u) / log(1 - p)))
+        # should be 
+        sampledValue = int(ceil(log(u) / log(1-p) ))
+        
+        # https://www.quora.com/How-do-I-prove-that-ln-U-ln-1-p-follows-geometric-distribution-with-parameter-p   ceiling is used because k starts at 1. 
+        
+        if maxVal is not None:
+                sampledValue = min(maxVal, sampledValue)
+        return sampledValue
 
 
 def sampleNCG(year):

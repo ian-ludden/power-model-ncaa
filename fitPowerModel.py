@@ -22,7 +22,7 @@ CAPPED_ALPHA = 2.
 def calculateAlpha(seed1, seed2, seed1Wins, seed2Wins):
     """Computes the alpha-value for the power model 
        given the seeds and how many games each has won in
-       their previous match-ups in some round. 
+       their previous match-ups in some round. As described in pdf.
 
        Parameters
        ----------
@@ -63,7 +63,10 @@ def load_ref_brackets(inputFilename="allBracketsTTT.json"):
        the actual tournament brackets in some subset of 
        tournament years, this function returns a 
        dictionary of the bracket vectors with years as keys.
-       Each bracket vector is a list of 63 0s and/or 1s. 
+       Each bracket vector is a list of 63 0s and/or 1s.
+
+       This is called in the main function. So the historical results
+       are converted from json to the 63 bit string representation
     """
     with open(inputFilename, 'r') as f:
         data = json.load(f)
@@ -108,6 +111,8 @@ def compute_all_alphas(brackets):
             if r == 1:
                 alpha = np.sign(alpha) * min(abs(alpha), CAPPED_ALPHA)
                 result[r][s1] = {s2: alpha}
+
+                # output looks like this
                 print('{0},{1}'.format(s1, s2))
                 print('{0},{1},{2},{3:.4f}'.format(s1Wins, s2Wins, s1Wins + s2Wins, alpha))
             else:
@@ -115,6 +120,8 @@ def compute_all_alphas(brackets):
                 weights.append(s1Wins + s2Wins)
         
         if r > 1:
+            # any games after round of 64 are "weighted" by number of occurences
+            
             alpha = np.average(alphas, weights=weights)
             alpha = np.sign(alpha) * min(abs(alpha), CAPPED_ALPHA)
             result[r] = alpha
@@ -130,6 +137,8 @@ if __name__ == '__main__':
     # Print Round 1 results
     for year in range(2013, 2021):
         print(year)
+
+        # x corresponds to year, b the bit string result
         result = compute_all_alphas([b for x, b in load_ref_brackets().items() if x < year])
         for r in range(2, 7):
             all_results[r].append(result[r])
