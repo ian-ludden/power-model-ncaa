@@ -43,9 +43,13 @@ ALPHA_VALS = None
 BT_PROBS = None
 
 
+
+
 def generateBracketPower(year, r, samplingFnName=None):
     """Generates a bracket for the given year using the power model. 
        The given sampling function is used to sample the seeds which reach round r. The pseudo code in the paper. 
+    
+       With the inclusion of samplePower8Brute, this function is now a dependent function dependent on samplingFnName
 
        Parameters
        ----------
@@ -64,6 +68,8 @@ def generateBracketPower(year, r, samplingFnName=None):
        -------
        bracket : list of ints
            A list of 63 0s and/or 1s representing the predicted game outcomes.
+
+       
     """
     global TOP_SEEDS
     bracket = []
@@ -77,13 +83,19 @@ def generateBracketPower(year, r, samplingFnName=None):
     nSamples = 2 ** (7 - r) if r > 1 else 0
     # note that if I pick r = 6, that means i want to sample the 2 seeds that will appear in the NCG
 
-
-    # need to call the sampling functions and generate the seeds from those samples' paths in the bracket
     
+    # need to call the sampling functions and generate the seeds from those samples' paths in the bracket
+
     if nSamples > 0:
-        samplingFn = getattr(samplingFunctions, samplingFnName)
-        sampledSeeds = samplingFn(year) #if 
-        # sampledSeeds will be vector of seed values 
+        
+        # when using samplePower8Brute I am actually using sampleE8
+        if samplingFnName == "samplePower8Brute":
+            samplingFn = getattr(samplingFunctions, "sampleE8")
+            sampledSeeds = samplingFn(year) 
+        else:
+            samplingFn = getattr(samplingFunctions, samplingFnName)
+            sampledSeeds = samplingFn(year)  
+            # sampledSeeds will be vector of sampled seed values. (not 0 or 1s)
         
     fixedChampions = [-1 for i in range(4)] # final 4. champs from each region
 
@@ -130,17 +142,36 @@ def generateBracketPower(year, r, samplingFnName=None):
     else: # By check at beginning, r must be 1
         pass # Leave all "fixed" seeds as -1 
 
+    
     f4Seeds = [-1 for i in range(4)]
     # Select outcomes of each of the four regions
-    for regionIndex in range(4):
-        regionVector, f4Seeds[regionIndex] = sampleRegion(
-            fixedChampion=fixedChampions[regionIndex], 
-            fixedTopE8=fixedTopE8s[regionIndex], 
-            fixedBottomE8=fixedBottomE8s[regionIndex], 
-            year=year, 
-            model='power')
-        bracket += regionVector
+    if samplingFnName != "samplePower8Brute":
 
+        for regionIndex in range(4):
+            regionVector, f4Seeds[regionIndex] = sampleRegion(
+                fixedChampion=fixedChampions[regionIndex], 
+                fixedTopE8=fixedTopE8s[regionIndex], 
+                fixedBottomE8=fixedBottomE8s[regionIndex], 
+                year=year, 
+                model='power')
+            bracket += regionVector
+
+    else:
+        # need to have power model do 128 previous things
+        for i in range(128):
+            aBracket = []
+            for regionIndex in range(4):
+                regionVector, f4Seeds[regionIndex] = sampleRegion(
+                    fixedChampion=fixedChampions[regionIndex], 
+                    fixedTopE8=fixedTopE8s[regionIndex], 
+                    fixedBottomE8=fixedBottomE8s[regionIndex], 
+                    year=year, 
+                    model='power')
+                aBracket += regionVector
+            bracket.append(aBracket)
+        # at this point we are still missing the last 7 bits strings, so note that this may break the score function   
+        return bracket
+            
     
    
     # [region1,region2,region3,region4]
@@ -148,8 +179,6 @@ def generateBracketPower(year, r, samplingFnName=None):
     # Select outcomes of F4/NCG games (Rounds 5, 6)
     winProb0 = getWinProbability({'seed': f4Seeds[0]}, {'seed': f4Seeds[1]}, r=5, year=year, model='power')
     winProb1 = getWinProbability({'seed': f4Seeds[2]}, {'seed': f4Seeds[3]}, r=5, year=year, model='power')
-    # this place seems wrong
-
    
     f4Result0 = 1 if random.random() < winProb0 else 0
     f4Result1 = 1 if random.random() < winProb1 else 0
@@ -361,12 +390,19 @@ if __name__ == '__main__':
 
     # # import pdb; pdb.set_trace()
 
-    #testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
+     #testF4BBracket = generateBracketPower(2019, 5, 'sampleF4B')
     #print(scoreBracket(testF4BBracket, year=2019))
 
     # import pdb; pdb.set_trace()
 
-    # SAMPLE_SIZE = 10000
+    testPower8BruteBracket = generateBracketPower(2019, 4, 'samplePower8Brute')
+    print(testPower8BruteBracket
+    )
+   # print(scoreBracket(testF4BBracket, year=2019))
+
+    import pdb; pdb.set_trace()
+
+  # SAMPLE_SIZE = 10000
     # year = 2016
     # for i in range(SAMPLE_SIZE):
     #     testE8Bracket = generateBracketPower(year, 4, 'sampleE8')

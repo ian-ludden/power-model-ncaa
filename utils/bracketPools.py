@@ -22,6 +22,12 @@ import scoringFunctions as sf
 # 
 ######################################################################
 
+
+# total number of methods of generation
+NUM_GENERATORS = 6
+
+
+
 def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=None):
         """Generates a pool of brackets with the given parameters.
 
@@ -49,13 +55,27 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
         """
         brackets = []
 
-        for index in range(size):
-                if model == 'power':
-                        newBracket = bg.generateBracketPower(year, r, samplingFnName)
-                else: # 'bradley-terry'
-                        newBracket = bg.generateBracketBradleyTerry(year)
+        if samplingFnName == "samplePower8Brute":
+                # special case, one call to bg.generateBracketPower will return a vector of string brackets of size 2^7 (128).
+                
+                # initial loop to contain the number of fixed 8's to use
+                # could be size / 128
+                for index in range(int(size/128)):
+                        newBracket = bg.generateBracketPower(year,r,samplingFnName)
+                        for bracketIndex,aBracket in enumerate(newBracket):
+                                bitString = "{0:b}".format(bracketIndex)
+                                brackets.append(bm.stringToHex(bm.vectorToString(aBracket)+bitString))
+                
+                # loop thru the returned list of vectors,  convert each to string, apeend the 128 possible bit and append to brackets
+        else:
+                
+            for index in range(size):
+                    if model == 'power':
+                            newBracket = bg.generateBracketPower(year, r, samplingFnName)
+                    else: # 'bradley-terry'
+                            newBracket = bg.generateBracketBradleyTerry(year)
 
-                brackets.append(bm.stringToHex(bm.vectorToString(newBracket)))
+                    brackets.append(bm.stringToHex(bm.vectorToString(newBracket)))
 
         return brackets
 
@@ -74,7 +94,8 @@ def createAndSaveBracketPool(sampleSize, year=2020, model='power', r=1, sampling
                                         'nReplications': nReplications, 'model': model, 
                                         'r': r, 'samplingFnName': samplingFnName, 
                                         'brackets': brackets}
-
+        # brackets is a list of lists
+        
         with open(filepath, 'w') as outputFile:
                 outputFile.write(json.dumps(outputDict))
 
@@ -122,9 +143,14 @@ def runSamples(nReplications, sampleSize):
                 createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
                         samplingFnName='sampleF4B', nReplications=nReplications)
 
-                # Power: r = 6
+                 # Power: r = 6
                 createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
                         samplingFnName='sampleNCG', nReplications=nReplications)
+
+               # Power: r=4
+                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+                        samplingFnName='samplePower8Brute', nReplications=nReplications)
+
 
 
 def readAndScore(nReplications, sampleSize):
@@ -134,9 +160,16 @@ def readAndScore(nReplications, sampleSize):
         in a CSV file."""
         # TODO: implement
         for year in range(2013, 2020):
-                maxScores = np.zeros((6, nReplications))
-                espnCounts = np.zeros((6, nReplications))
-                pfProps = np.zeros((6, nReplications))
+
+                # statistics to compute
+                maxScores = np.zeros((NUM_GENERATORS, nReplications))
+                espnCounts = np.zeros((NUM_GENERATORS, nReplications))
+                pfProps = np.zeros((NUM_GENERATORS, nReplications))
+                variance = np.zeros((NUM_GENERATORS,nReplications))
+                
+
+
+
                 minEspnScore = sf.espnCutoffs[str(year)]
                 maxPfScore = sf.pickFavoriteScore[str(year)]
 
@@ -153,6 +186,11 @@ def readAndScore(nReplications, sampleSize):
                         samplingFnName='sampleF4B', nReplications=nReplications))
                 filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
                         samplingFnName='sampleNCG', nReplications=nReplications))
+
+                
+
+
+                
                 totalFiles = len(filepaths)
                 for fIndex, filepath in enumerate(filepaths):
                         with open(filepath, 'r') as f:
@@ -161,24 +199,33 @@ def readAndScore(nReplications, sampleSize):
 
                         brackets = data['brackets']
                         for repIndex, sample in enumerate(brackets):
+
+                                # instantiates a vector that contains all scores in one sample. To compute statistics on scores, do it here.
                                 scores = np.zeros(sampleSize)
                                 for bracketIndex, bracketHex in enumerate(sample):
                                         bracketVector = bm.stringToVector(bm.hexToString(bracketHex))
                                         scores[bracketIndex] = sf.scoreBracket(bracketVector, year=year)[0]
 
+                                # computing statistics 
                                 maxScores[fIndex][repIndex] = np.max(scores)
                                 espnCounts[fIndex][repIndex] = (scores >= minEspnScore).sum()
                                 pfProps[fIndex][repIndex] = (scores >= maxPfScore).sum() * 1. / sampleSize
 
-                printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts, pfProps=pfProps)
+                                variance[fIndex][repIndex] = np.var(scores)
+                                
+
+                printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts, pfProps=pfProps,variance = variance)
 
 
-def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None):
+def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None, variance = None):
         """Saves the Max Score, ESPN Count, and PF proportion results for a set of replications
         to a CSV file.
+        Doesnt actually save to a csv file yet. 
+
         """
         modelHeaders = 'Replication,B-T,Power R64,Power E8,Power F4_A,Power F4_B,Power NCG'
         print(year)
+        
         print('Max Scores')
         print(modelHeaders)
         for repIndex in range(maxScores.shape[1]):
@@ -186,8 +233,8 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None)
                 for modelIndex in range(6):
                         sys.stdout.write('{0},'.format(int(maxScores[modelIndex][repIndex])))
                 sys.stdout.write('\n')
-
         print()
+
         print('ESPN Counts')
         print(modelHeaders)
         for repIndex in range(espnCounts.shape[1]):
@@ -195,8 +242,8 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None)
                 for modelIndex in range(6):
                         sys.stdout.write('{0},'.format(int(espnCounts[modelIndex][repIndex])))
                 sys.stdout.write('\n')
-
         print()
+
         print('Pick Favorite Proportions')
         print(modelHeaders)
         for repIndex in range(pfProps.shape[1]):
@@ -204,8 +251,18 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None)
                 for modelIndex in range(6):
                         sys.stdout.write('{0:.6f},'.format(pfProps[modelIndex][repIndex]))
                 sys.stdout.write('\n')
-
         print()
+
+        print('Variance')
+        print(modelHeaders)
+        for repIndex in range(pfProps.shape[1]):
+                sys.stdout.write('{0},'.format(repIndex))
+                for modelIndex in range(6):
+                        sys.stdout.write('{0:.2f},'.format(variance[modelIndex][repIndex]))
+                sys.stdout.write('\n')
+        print()
+
+      
 
 
 def getScoreDistribution(nReplications=None, sampleSize=None, filepath=None):
@@ -217,8 +274,12 @@ if __name__ == '__main__':
         sampleSize = 50000
         nReplications = 25
         # runSamples(nReplications=nReplications, sampleSize=sampleSize)
-        print("starting")
+
+
+        print("starting scoring")
         readAndScore(nReplications=nReplications, sampleSize=sampleSize)
+
+
         quit()
 
 
