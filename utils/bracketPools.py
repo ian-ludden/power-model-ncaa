@@ -24,7 +24,7 @@ import scoringFunctions as sf
 
 
 # total number of methods of generation
-NUM_GENERATORS = 6
+NUM_GENERATORS = 7
 
 
 
@@ -63,7 +63,7 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
                 for index in range(int(size/128)):
                         newBracket = bg.generateBracketPower(year,r,samplingFnName)
                         for bracketIndex,aBracket in enumerate(newBracket):
-                                bitString = "{0:b}".format(bracketIndex)
+                                bitString = "{:07b}".format(bracketIndex)
                                 brackets.append(bm.stringToHex(bm.vectorToString(aBracket)+bitString))
                 
                 # loop thru the returned list of vectors,  convert each to string, apeend the 128 possible bit and append to brackets
@@ -160,19 +160,6 @@ def readAndScore(nReplications, sampleSize):
         in a CSV file."""
         # TODO: implement
         for year in range(2013, 2020):
-
-                # statistics to compute
-                maxScores = np.zeros((NUM_GENERATORS, nReplications))
-                espnCounts = np.zeros((NUM_GENERATORS, nReplications))
-                pfProps = np.zeros((NUM_GENERATORS, nReplications))
-                variance = np.zeros((NUM_GENERATORS,nReplications))
-                
-
-
-
-                minEspnScore = sf.espnCutoffs[str(year)]
-                maxPfScore = sf.pickFavoriteScore[str(year)]
-
                 filepaths = []
                 filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
                         nReplications=nReplications))
@@ -186,17 +173,37 @@ def readAndScore(nReplications, sampleSize):
                         samplingFnName='sampleF4B', nReplications=nReplications))
                 filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
                         samplingFnName='sampleNCG', nReplications=nReplications))
+                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8Brute', nReplications = nReplications))
 
-                
+ 
+                # statistics to compute
+                # in json file, will store a nReplications long array for each statistic
 
-
-                
                 totalFiles = len(filepaths)
+                global NUM_GENERATORS
+                NUM_GENERATORS = totalFiles
+                
+                maxScores = np.zeros((NUM_GENERATORS, nReplications))
+                espnCounts = np.zeros((NUM_GENERATORS, nReplications))
+                pfProps = np.zeros((NUM_GENERATORS, nReplications))
+                variance = np.zeros((NUM_GENERATORS,nReplications))
+                
+
+
+
+                minEspnScore = sf.espnCutoffs[str(year)]
+                maxPfScore = sf.pickFavoriteScore[str(year)]
+
+               
+
+
+                
+               
                 for fIndex, filepath in enumerate(filepaths):
                         with open(filepath, 'r') as f:
                                 data = json.load(f)
                                 print("opened file " + str(fIndex+1)+"/"+str(totalFiles))
-
+ 
                         brackets = data['brackets']
                         for repIndex, sample in enumerate(brackets):
 
@@ -210,10 +217,15 @@ def readAndScore(nReplications, sampleSize):
                                 maxScores[fIndex][repIndex] = np.max(scores)
                                 espnCounts[fIndex][repIndex] = (scores >= minEspnScore).sum()
                                 pfProps[fIndex][repIndex] = (scores >= maxPfScore).sum() * 1. / sampleSize
-
                                 variance[fIndex][repIndex] = np.var(scores)
-                                
 
+                        #append to the json files the statistics
+                        statisticsOutput = {'maxScores': maxScores[fIndex][:].tolist(), 'espnCounts' : espnCounts[fIndex][:].tolist() , 'pfProps' : pfProps[fIndex][:].tolist(),'variance' : variance[fIndex][:].tolist() }
+
+                        with open(filepath,'w') as outputFile:
+                                data.update(statisticsOutput)
+                                outputFile.write(json.dumps(data))
+                                
                 printResultsTables(year=year, maxScores=maxScores, espnCounts=espnCounts, pfProps=pfProps,variance = variance)
 
 
@@ -273,10 +285,14 @@ def getScoreDistribution(nReplications=None, sampleSize=None, filepath=None):
 if __name__ == '__main__':
         sampleSize = 50000
         nReplications = 25
-        # runSamples(nReplications=nReplications, sampleSize=sampleSize)
 
+        #runSamples(nReplications=nReplications, sampleSize=sampleSize)
 
-        print("starting scoring")
+        # solo power8Brute
+        #for year in range(2013,2020):
+         #       createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8Brute',nReplications = nReplications)
+        
+        print("done samplying, starting scoring")
         readAndScore(nReplications=nReplications, sampleSize=sampleSize)
 
 
