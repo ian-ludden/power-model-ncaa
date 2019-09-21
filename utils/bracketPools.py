@@ -23,9 +23,10 @@ import scoringFunctions as sf
 ######################################################################
 
 
-# total number of methods of generation
+# total number of methods of generations methods
 NUM_GENERATORS = 7
-
+# is it worthwile for a global var if there will be more models in future
+# NUM_GENERATORS get up to date number in read and score
 
 
 def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=None):
@@ -55,7 +56,7 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
         """
         brackets = []
 
-        if samplingFnName == "samplePower8Brute":
+        if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
                 # special case, one call to bg.generateBracketPower will return a vector of string brackets of size 2^7 (128).
                 
                 # initial loop to contain the number of fixed 8's to use
@@ -64,12 +65,19 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
                         newBracket = bg.generateBracketPower(year,r,samplingFnName)
                         for bracketIndex,aBracket in enumerate(newBracket):
                                 bitString = "{:07b}".format(bracketIndex)
-                                brackets.append(bm.stringToHex(bm.vectorToString(aBracket)+bitString))
+                                bitString = [i for i in bitString]
+
+                                # sampleRegion determines region outcome, need to overwrite region outcomes to a random outcome. 
+                                aBracket[14] = bitString[0]
+                                aBracket[29] = bitString[1]
+                                aBracket[44] = bitString[2]
+                                aBracket[59] = bitString[3]
+                                aBracket.extend(bitString[4:])
+                                brackets.append(bm.stringToHex(bm.vectorToString(aBracket)))
                 
-                # loop thru the returned list of vectors,  convert each to string, apeend the 128 possible bit and append to brackets
+                
         else:
-                
-            for index in range(size):
+                for index in range(size):
                     if model == 'power':
                             newBracket = bg.generateBracketPower(year, r, samplingFnName)
                     else: # 'bradley-terry'
@@ -95,7 +103,7 @@ def createAndSaveBracketPool(sampleSize, year=2020, model='power', r=1, sampling
                                         'r': r, 'samplingFnName': samplingFnName, 
                                         'brackets': brackets}
         # brackets is a list of lists
-        
+        print("saving 1")
         with open(filepath, 'w') as outputFile:
                 outputFile.write(json.dumps(outputDict))
 
@@ -150,8 +158,12 @@ def runSamples(nReplications, sampleSize):
                # Power: r=4
                 createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
                         samplingFnName='samplePower8Brute', nReplications=nReplications)
-
-
+               # Power: r=4
+                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+                        samplingFnName='samplePower8BrutePf', nReplications=nReplications)
+               # Power: r=4
+                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+                        samplingFnName='samplePower8BrutePfNot', nReplications=nReplications)
 
 def readAndScore(nReplications, sampleSize):
         """Reads the JSON files for all experiment batches, 
@@ -161,19 +173,21 @@ def readAndScore(nReplications, sampleSize):
         # TODO: implement
         for year in range(2013, 2020):
                 filepaths = []
-                filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
-                        nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize, year=year, model='power', 
-                        nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=4, 
-                        samplingFnName='sampleE8', nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-                        samplingFnName='sampleF4A', nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-                        samplingFnName='sampleF4B', nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
-                        samplingFnName='sampleNCG', nReplications=nReplications))
-                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8Brute', nReplications = nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
+                #         nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', 
+                #         nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=4, 
+                #         samplingFnName='sampleE8', nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
+                #         samplingFnName='sampleF4A', nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
+                #         samplingFnName='sampleF4B', nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
+                #         samplingFnName='sampleNCG', nReplications=nReplications))
+                # filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8Brute', nReplications = nReplications))
+                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePf', nReplications = nReplications))
+                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePfNot', nReplications = nReplications))
 
  
                 # statistics to compute
@@ -242,7 +256,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None,
         print(modelHeaders)
         for repIndex in range(maxScores.shape[1]):
                 sys.stdout.write('{0},'.format(repIndex))
-                for modelIndex in range(6):
+                for modelIndex in range(NUM_GENERATORS):
                         sys.stdout.write('{0},'.format(int(maxScores[modelIndex][repIndex])))
                 sys.stdout.write('\n')
         print()
@@ -251,7 +265,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None,
         print(modelHeaders)
         for repIndex in range(espnCounts.shape[1]):
                 sys.stdout.write('{0},'.format(repIndex))
-                for modelIndex in range(6):
+                for modelIndex in range(NUM_GENERATORS):
                         sys.stdout.write('{0},'.format(int(espnCounts[modelIndex][repIndex])))
                 sys.stdout.write('\n')
         print()
@@ -260,7 +274,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None,
         print(modelHeaders)
         for repIndex in range(pfProps.shape[1]):
                 sys.stdout.write('{0},'.format(repIndex))
-                for modelIndex in range(6):
+                for modelIndex in range(NUM_GENERATORS):
                         sys.stdout.write('{0:.6f},'.format(pfProps[modelIndex][repIndex]))
                 sys.stdout.write('\n')
         print()
@@ -269,7 +283,7 @@ def printResultsTables(year=2020, maxScores=None, espnCounts=None, pfProps=None,
         print(modelHeaders)
         for repIndex in range(pfProps.shape[1]):
                 sys.stdout.write('{0},'.format(repIndex))
-                for modelIndex in range(6):
+                for modelIndex in range(NUM_GENERATORS):
                         sys.stdout.write('{0:.2f},'.format(variance[modelIndex][repIndex]))
                 sys.stdout.write('\n')
         print()
@@ -288,9 +302,10 @@ if __name__ == '__main__':
 
         #runSamples(nReplications=nReplications, sampleSize=sampleSize)
 
-        # solo power8Brute
-        #for year in range(2013,2020):
-         #       createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8Brute',nReplications = nReplications)
+        # solo power8BrutePf and Pfnot
+        # for year in range(2013,2020):
+        #         createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8BrutePf',nReplications = nReplications)
+        #         createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8BrutePfNot',nReplications = nReplications)
         
         print("done samplying, starting scoring")
         readAndScore(nReplications=nReplications, sampleSize=sampleSize)

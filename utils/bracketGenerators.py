@@ -89,13 +89,14 @@ def generateBracketPower(year, r, samplingFnName=None):
     if nSamples > 0:
         
         # when using samplePower8Brute I am actually using sampleE8
-        if samplingFnName == "samplePower8Brute":
+        if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
             samplingFn = getattr(samplingFunctions, "sampleE8")
             sampledSeeds = samplingFn(year) 
         else:
             samplingFn = getattr(samplingFunctions, samplingFnName)
             sampledSeeds = samplingFn(year)  
             # sampledSeeds will be vector of sampled seed values. (not 0 or 1s)
+            
         
     fixedChampions = [-1 for i in range(4)] # final 4. champs from each region
 
@@ -145,8 +146,31 @@ def generateBracketPower(year, r, samplingFnName=None):
     
     f4Seeds = [-1 for i in range(4)]
     # Select outcomes of each of the four regions
-    if samplingFnName != "samplePower8Brute":
+    # the fixed results prior to the elite 8, so for each region fix the free 8
+    # pf and pfnot
+    # 
 
+            
+    if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+        if samplingFnName == "samplePower8BrutePf":
+            modelName = "pf"
+        if samplingFnName == "samplingPower8BrutePfNot":
+            modelName = "pfNot"
+        
+        for i in range(128):
+            aBracket = []
+            for regionIndex in range(4):
+                regionVector, f4Seeds[regionIndex] = sampleRegion(
+                    fixedChampion=fixedChampions[regionIndex], 
+                    fixedTopE8=fixedTopE8s[regionIndex], 
+                    fixedBottomE8=fixedBottomE8s[regionIndex], 
+                    year=year, 
+                    model=modelName)
+                aBracket += regionVector
+            bracket.append(aBracket)
+        # at this point we are still missing the last 7 bits strings, so note that this may break the score function   
+ 
+else:
         for regionIndex in range(4):
             regionVector, f4Seeds[regionIndex] = sampleRegion(
                 fixedChampion=fixedChampions[regionIndex], 
@@ -156,20 +180,9 @@ def generateBracketPower(year, r, samplingFnName=None):
                 model='power')
             bracket += regionVector
 
-    else:
-        # need to have power model do 128 previous things
-        for i in range(128):
-            aBracket = []
-            for regionIndex in range(4):
-                regionVector, f4Seeds[regionIndex] = sampleRegion(
-                    fixedChampion=fixedChampions[regionIndex], 
-                    fixedTopE8=fixedTopE8s[regionIndex], 
-                    fixedBottomE8=fixedBottomE8s[regionIndex], 
-                    year=year, 
-                    model='power')
-                aBracket += regionVector
-            bracket.append(aBracket)
-        # at this point we are still missing the last 7 bits strings, so note that this may break the score function   
+
+       
+        
         return bracket
             
     
@@ -250,8 +263,10 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
             if isSeed1WinAutomatically:
                 p = 1.
             elif isSeed2WinAutomatically:
+                # should it be -1? 
                 p = 0.
             else:
+                # pf and pf not implemented here
                 p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model=model)
 
             rnd = random.random()
@@ -260,6 +275,10 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
         seeds = newSeeds
 
     return [regionVector, seeds[0]]
+
+
+
+
 
 
 def getWinProbability(team1, team2, r, year, model):
@@ -279,7 +298,9 @@ def getWinProbability(team1, team2, r, year, model):
        year : int
            The tournament year to be predicted
        model : string
-           The name of the model to use ('power' or 'bradley-terry')
+           The name of the model to use : power, bradleyTerry, pf, pfNot
+    
+           
 
        Returns
        -------
@@ -319,6 +340,24 @@ def getWinProbability(team1, team2, r, year, model):
 
         return BT_PROBS[year - 2013][seed1][seed2]
 
+    elif model == 'pf':
+        if seed1 < seed2 :
+            return 1
+        elif seed1 > seed2:
+            return 0
+        else:
+            exit('Invalid model \'{0}\' provided to getWinProbability.'.format(model))
+            
+
+    elif model == 'pfNot':
+        if seed1 < seed2:
+            return 0
+        elif seed1 > seed2:
+            return 1
+        else:
+            exit('Invalid model \'{0}\' provided to getWinProbability.'.format(model))
+
+            
     else:
         exit('Invalid model \'{0}\' provided to getWinProbability.'.format(model))
 
