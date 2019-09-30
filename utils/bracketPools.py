@@ -22,9 +22,31 @@ import scoringFunctions as sf
 # 
 ######################################################################
 
+MODEL_TYPES = ['bradleyTerry','power']
+GENERATION_TYPES = [(0,1,None),(1,1,None),(1,1,'sampleE8'),(1,5,'sampleF4A'),(1,5,'sampleF5B'),(1,6,'sampleNCG'),(1,4,'samplePower8Brute'),(1,4,'samplePower8BrutePf'),(1,4,'samplePower8BrutePfNot'),(1,4,'samplePower8BruteRandom1'),(1,4,'samplePower8BruteRPickedUni'),(1,4,'samplePower8BruteRPickedTopN'),(1,4,'samplePower8BruteRPickedHistDist')]
+
+GENERATION_TYPES = GENERATION_TYPES[-4:]
+
+######################################################################
+# Generator Naming 
+#
+# samplePower8Brute- : The picking of all 128 possible results post 
+# fixing the elite 8 teams.
+#
+# -RPicked- : Predetermining the number of upsets to happen before 
+# picking the non elite 8 influenced games to be a potential upset. 
+#
+######################################################################
+
+
+
+# usually we run all, but since takes a while, here we select only the new ones to run
+#GENERATION_TYPES = GENERATION_TYPES[]
+
+
 
 # total number of methods of generations methods
-NUM_GENERATORS = 7
+NUM_GENERATORS = len(GENERATION_TYPES)
 # is it worthwile for a global var if there will be more models in future
 # NUM_GENERATORS get up to date number in read and score
 
@@ -56,7 +78,10 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
         """
         brackets = []
 
-        if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+        
+        #if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+
+        if 'samplePower8Brute' in samplingFnName:
                 # special case, one call to bg.generateBracketPower will return a vector of string brackets of size 2^7 (128).
                 
                 # initial loop to contain the number of fixed 8's to use
@@ -93,6 +118,7 @@ def createAndSaveBracketPool(sampleSize, year=2020, model='power', r=1, sampling
         """
         brackets = []
         for replicationIndex in range(nReplications):
+                print("rep : " +str(replicationIndex))
                 brackets.append(generateBracketPool(sampleSize, year, model, r, samplingFnName))
 
         if filepath is None:
@@ -130,40 +156,49 @@ def generateFilepath(sampleSize, year=2020, model='power', r=1, samplingFnName=N
 def runSamples(nReplications, sampleSize):
         """Generates bracket pool samples for the 
         power model paper experiments."""
+
+        
         for year in range(2013, 2020):
+
+                for one in GENERATION_TYPES:
+                        createAndSaveBracketPool(sampleSize, year=year, model=MODEL_TYPES[one[0]], r=one[1], 
+                        samplingFnName=one[2], nReplications=nReplications)
+
+                
                 # Bradley-Terry
-                createAndSaveBracketPool(sampleSize, year=year, model='bradley-terry', 
-                        nReplications=nReplications)
+               #  createAndSaveBracketPool(sampleSize, year=year, model='bradley-terry', 
+               #          nReplications=nReplications)
 
-                # Power: r = 1
-                createAndSaveBracketPool(sampleSize, year=year, model='power', 
-                        nReplications=nReplications)
+               #  # Power: r = 1
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', 
+               #          nReplications=nReplications)
 
-                # Power: r = 4
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-                        samplingFnName='sampleE8', nReplications=nReplications)
+               #  # Power: r = 4
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+               #          samplingFnName='sampleE8', nReplications=nReplications)
 
-                # Power: r = 5, sampleF4A
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-                        samplingFnName='sampleF4A', nReplications=nReplications)
+               #  # Power: r = 5, sampleF4A
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
+               #          samplingFnName='sampleF4A', nReplications=nReplications)
 
-                # Power: r = 5, sampleF4B
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-                        samplingFnName='sampleF4B', nReplications=nReplications)
+               #  # Power: r = 5, sampleF4B
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
+               #          samplingFnName='sampleF4B', nReplications=nReplications)
 
-                 # Power: r = 6
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
-                        samplingFnName='sampleNCG', nReplications=nReplications)
+               #   # Power: r = 6
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
+               #          samplingFnName='sampleNCG', nReplications=nReplications)
 
-               # Power: r=4
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-                        samplingFnName='samplePower8Brute', nReplications=nReplications)
-               # Power: r=4
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-                        samplingFnName='samplePower8BrutePf', nReplications=nReplications)
-               # Power: r=4
-                createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-                        samplingFnName='samplePower8BrutePfNot', nReplications=nReplications)
+               # # Power: r=4
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+               #          samplingFnName='samplePower8Brute', nReplications=nReplications)
+               # # Power: r=4
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+               #          samplingFnName='samplePower8BrutePf', nReplications=nReplications)
+               # # Power: r=4
+               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
+               #          samplingFnName='samplePower8BrutePfNot', nReplications=nReplications)
+  
 
 def readAndScore(nReplications, sampleSize):
         """Reads the JSON files for all experiment batches, 
@@ -173,6 +208,9 @@ def readAndScore(nReplications, sampleSize):
         # TODO: implement
         for year in range(2013, 2020):
                 filepaths = []
+                for one in GENERATION_TYPES:
+                        filepaths.append(generateFilepath(sampleSize,year = year, model = MODEL_TYPES[one[0]], r = one[1], samplingFnName=one[2], nReplications = nReplications))
+                        
                 # filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
                 #         nReplications=nReplications))
                 # filepaths.append(generateFilepath(sampleSize, year=year, model='power', 
@@ -186,8 +224,8 @@ def readAndScore(nReplications, sampleSize):
                 # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
                 #         samplingFnName='sampleNCG', nReplications=nReplications))
                 # filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8Brute', nReplications = nReplications))
-                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePf', nReplications = nReplications))
-                filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePfNot', nReplications = nReplications))
+                #filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePf', nReplications = nReplications))
+                #filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePfNot', nReplications = nReplications))
 
  
                 # statistics to compute
@@ -300,7 +338,7 @@ if __name__ == '__main__':
         sampleSize = 50000
         nReplications = 25
 
-        #runSamples(nReplications=nReplications, sampleSize=sampleSize)
+        runSamples(nReplications=nReplications, sampleSize=sampleSize)
 
         # solo power8BrutePf and Pfnot
         # for year in range(2013,2020):
@@ -312,7 +350,6 @@ if __name__ == '__main__':
 
 
         quit()
-
 
         year = 2016
         filepath = generateFilepath(sampleSize, year=year, model='power', nReplications=nReplications)

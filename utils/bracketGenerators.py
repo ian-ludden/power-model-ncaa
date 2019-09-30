@@ -6,6 +6,7 @@ import bracketManipulations as bm
 import fileUtils
 import samplingFunctions
 from scoringFunctions import scoreBracket
+import numpy as np
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -43,7 +44,111 @@ ALPHA_VALS = None
 BT_PROBS = None
 
 
+# historical upset counts
+R1_UPSETS_HIST = [3, 0, 2, 2, 1, 0, 2, 2, 2, 1, 3, 2, 2, 2, 1, 0, 3, 3, 3, 3, 2, 1, 1, 1, 2, 2, 4, 0, 1, 3, 2, 2, 1, 4, 0, 1, 2, 3, 2, 1, 1, 3, 3, 1, 3, 2, 2, 2, 0, 1, 3, 2, 2, 2, 4, 1, 3, 3, 3, 2, 1, 0, 2, 0, 2, 3, 2, 5, 1, 1, 2, 1, 2, 3, 1, 2, 3, 1, 0, 0, 3, 0, 3, 2, 3, 3, 0, 2, 2, 1, 1, 1, 1, 3, 0, 3, 5, 2, 1, 2, 3, 1, 4, 2, 1, 0, 4, 1, 4, 2, 0, 4, 1, 4, 2, 2, 3, 1, 1, 2, 0, 2, 1, 2, 3, 3, 2, 4, 1, 0, 2, 2, 2, 0, 3, 1, 3, 3, 4, 2]
+R2_UPSETS_HIST = [2, 0, 2, 1, 1, 0, 2, 2, 2, 0, 0, 2, 1, 2, 1, 1, 0, 0, 1, 0, 0, 2, 2, 2, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 1, 1, 0, 2, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 2, 2, 2, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 2, 2, 2, 0, 1, 2, 1, 1, 2, 1, 0, 1, 2, 1,
+2, 0, 2, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 2, 1, 1, 0, 1, 0, 0, 0, 1, 2, 1, 1, 1, 0, 1, 0, 1, 0, 2, 0, 1, 1, 0, 0, 2, 1, 1, 0, 1, 0, 1, 1, 0, 2, 0, 0, 0, 0]
 
+# historical matchups, probability of upset (rounded to 2 sig figs)
+# not normalized
+# for np.random.choice to not complain give 0 probability 0.001
+R1_MATCHUP_HIST ={(8, 9): 0.611,
+ (5, 12): 0.41,
+ (4, 13): 0.22,
+ (6, 11): 0.5,
+ (7, 10): 0.39,
+ (2, 15): 0.05,
+ (3, 14): 0.26,
+ (1, 16): 0.08}
+
+R2_MATCHUP_HIST = {(4, 12): 0.56,
+ (2, 7): 0.64,
+ (4, 5): 0.36,
+ (2, 10): 0.57,
+ (3, 6): 0.38,
+ (1, 9): 0.5,
+ (3, 11): 0.17,
+ (1, 8): 0.2,
+ (11, 14): 0.001,
+ (5, 13): 0.001,
+ (6, 14): 0.001,
+ (12, 13): 0.001,
+                   (10, 15): 0.001}
+
+def freeGamesUpsets(fixedTopE8,fixedBottomE8,pickMethod,nR1,nR2):
+    # to determine the games to be upsets based on historical distributions
+    r1Upsets = []
+    r2Upsets = []
+    
+    # first go thru r1 games and only keep free games
+    seeds = TOP_SEEDS + BOTTOM_SEEDS
+
+    freeGamesR1 = [] # (x,y) stores the matchups
+    
+    for gameNum in range(8):
+        topSeed = seeds[2*gameNum]
+        botSeed = seeds[2*gameNum+1]
+        if (topSeed == fixedTopE8 or topSeed == fixedBottomE8) or (botSeed == fixedTopE8 or botSeed == fixedBottomE8):
+            continue
+        else:
+            freeGamesR1.append((topSeed,botSeed))
+    freeGamesR1P = []
+        
+    for freeGameNum in freeGamesR1:
+        freeGamesR1P.append(R1_MATCHUP_HIST[freeGameNum])
+    freeGamesR1P = np.asarray(freeGamesR1P)
+        
+    if pickMethod == 'top':
+        r1Upsets = np.argsort(-np.asarray(freeGamesR1P))[:nR1]
+    if pickMethod == 'hist':
+        r1Upsets = np.random.choice([i for i in range(6)],replace = False,p = freeGamesR1P / (freeGamesR1P.sum()),size = nR1)
+
+    allGamesR2 = []
+    for gameNum in range(8):
+        topSeed = seeds[2*gameNum]
+        botSeed = seeds[2*gameNum+1]
+        if topSeed == fixedTopE8 or topSeed == fixedBottomE8:
+            allGamesR2.append(1)
+        elif botSeed == fixedTopE8 or botSeed == fixedBottomE8:
+            allGamesR2.append(0)
+        elif (topSeed,botSeed) in [freeGamesR1[i] for i in r1Upsets]:
+            allGamesR2.append(0)
+        else:
+            allGamesR2.append(1)
+    seeds = bm.applyRoundResults(seeds,allGamesR2)
+
+    freeGamesR2 = []
+    for gameNum in range(4):
+        topSeed = seeds[2*gameNum]
+        botSeed = seeds[2*gameNum+1]
+        if (topSeed == fixedTopE8 or topSeed == fixedBottomE8) or (botSeed == fixedTopE8 or botSeed == fixedBottomE8):
+            continue
+        else:
+            freeGamesR2.append((topSeed,botSeed))
+    freeGamesR2P = []
+    
+    for freeGameNum in freeGamesR2:
+        seed1,seed2 = freeGameNum[0],freeGameNum[1]
+        if (seed1,seed2) in R2_MATCHUP_HIST:
+            freeGamesR2P.append(R2_MATCHUP_HIST[freeGameNum])
+        elif (seed2,seed1) in R2_MATCHUP_HIST:
+            freeGamesR2P.append(R2_MATCHUP_HIST[(seed2,seed1)])
+        else:
+            # never seen a game, let it be pf
+            # but need to give some small number so choice doesnt complain
+            freeGamesR2P.append(0.0001)
+            
+    freeGamesR2P = np.asarray(freeGamesR2P)
+    
+    if pickMethod == 'top':
+        r2Upsets = np.argsort(-np.asarray(freeGamesR2P))[:nR2]
+    if pickMethod == 'hist':
+ 
+        r2Upsets = np.random.choice([i for i in range(len(freeGamesR2P))],replace = False,p = freeGamesR2P / (freeGamesR2P.sum()),size = nR2)
+
+    return r1Upsets,r2Upsets
+
+    
 
 def generateBracketPower(year, r, samplingFnName=None):
     """Generates a bracket for the given year using the power model. 
@@ -89,7 +194,9 @@ def generateBracketPower(year, r, samplingFnName=None):
     if nSamples > 0:
         
         # when using samplePower8Brute I am actually using sampleE8
-        if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+        #if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+
+        if 'samplePower8Brute' in samplingFnName:
             samplingFn = getattr(samplingFunctions, "sampleE8")
             sampledSeeds = samplingFn(year) 
         else:
@@ -151,12 +258,37 @@ def generateBracketPower(year, r, samplingFnName=None):
     # 
 
             
-    if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+    #if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
+    if 'samplePower8Brute' in samplingFnName:
+        roundIdp = None
+        pickMethod = None
+        
         if samplingFnName == "samplePower8BrutePf":
             modelName = "pf"
-        if samplingFnName == "samplingPower8BrutePfNot":
+        if samplingFnName == "samplePower8BrutePfNot":
             modelName = "pfNot"
+
+        if samplingFnName == "samplePower8BruteRandom1":
+            modelName = "pf"
+            roundIdp = False
+            pickMethod = "uni"
         
+        if samplingFnName == "samplePower8BruteRPickedUni":
+            modelName = "pf"
+            roundIdp = True
+            pickMethod = "uni"
+
+        if samplingFnName == "samplePower8BruteRPickedTopN":
+            modelName = "pf"
+            roundIdp = True
+            pickMethod = "top"
+
+        if samplingFnName == "samplePower8BruteRPickedHistDist":
+            modelName = "pf"
+            roundIdp = True
+            pickMethod = "hist"        
+
+        #f4Seeds[regionIndex] for    
         for i in range(128):
             aBracket = []
             for regionIndex in range(4):
@@ -165,12 +297,13 @@ def generateBracketPower(year, r, samplingFnName=None):
                     fixedTopE8=fixedTopE8s[regionIndex], 
                     fixedBottomE8=fixedBottomE8s[regionIndex], 
                     year=year, 
-                    model=modelName)
+                    model=modelName,roundIdp = roundIdp, pickMethod = pickMethod)
                 aBracket += regionVector
             bracket.append(aBracket)
-        # at this point we are still missing the last 7 bits strings, so note that this may break the score function   
+        # at this point we are still missing the last 3 bits (2)F4 + (1) NCG
+        return bracket
  
-else:
+    else:
         for regionIndex in range(4):
             regionVector, f4Seeds[regionIndex] = sampleRegion(
                 fixedChampion=fixedChampions[regionIndex], 
@@ -179,13 +312,6 @@ else:
                 year=year, 
                 model='power')
             bracket += regionVector
-
-
-       
-        
-        return bracket
-            
-    
    
     # [region1,region2,region3,region4]
         
@@ -219,10 +345,10 @@ else:
     return bracket
 
 
-def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, model='power'):
+def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, model='power', roundIdp = True, pickMethod = None):
     """Samples a region vector using the given model. 
 
-       Parameters
+    Parameters
        ----------
        fixedChampion : int (optional)
            The seed of the regional champion, if fixed in advance. 
@@ -232,6 +358,13 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
            The seed of the Elite Eight team from the bottom half, if fixed in advance. 
        year : int
            The year of the tournament to be predicted
+       roundIdp : bool
+           Only applies to the method that pick games to be upsets
+           pre elite 8. Determines if number of games to be upsets that
+           occur in r1 and r2 are independent or not.
+       pickMethod: str
+           The various ways of determining which matchups to be upset,
+           once the number of upsets is determined. if None, then nada.
        
        Returns
        -------
@@ -239,21 +372,57 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
            A list of 15 0s and/or 1s representing the game outcomes in the region, 8-4-2-1
       
 
-       regionWinner : int
+regionWinner : int
            The seed of the regional champion
-    """
+"""
+
     global TOP_SEEDS, BOTTOM_SEEDS
     regionVector = []
     seeds = TOP_SEEDS + BOTTOM_SEEDS
 
     # Loop through Rounds 1 (R64), 2 (R32), 3 (S16), and 4 (E8)
-    # 1 is the better seed, 0 the latter
+    # 1 is the top seed, 0 the bottom, location wise
     # top to bottom matchup wise first, then left to right round wise 
 
+
+
+    # for the power8Brute non pf/pfNot
+    # first go thru round 1, mark the "free" games 
+
+
+    # determine the games to be upsets
+    r1Upsets = []
+    r2Upsets = []
+    nR1 = 0
+    nR2 = 0
+    if pickMethod is not None:
+        if (roundIdp):
+            nR1 = np.random.choice(R1_UPSETS_HIST)
+            nR2 = np.random.choice(R2_UPSETS_HIST)
+            if(pickMethod == 'uni'):
+                r1Upsets = np.random.choice([i for i in range(6)],nR1)
+                r2Upsets = np.random.choice([i for i in range(2)],nR2)
+            if(pickMethod == 'top' or pickMethod == 'hist' ):
+                r1Upsets,r2Upsets = freeGamesUpsets(fixedTopE8,fixedBottomE8,pickMethod,nR1,nR2)
+            
+        else:
+            # for now only the random1 method gets here
+            upsetIdx = np.random.choice([i for i in range(8)])
+            if upsetIdx > 5:
+                r2Upsets.append(upsetIdx-6)
+            else:
+                r1Upsets.append(upsetIdx)
+    # r#_upsets tells me if I should make the nth game that is not elite8 related an upset. AKA the freeGameNum
+    
+    upsets = [r1Upsets,r2Upsets]
+    
     
     for roundNum in range(1, 5):
         numGames = int(len(seeds) / 2)
         newSeeds = []
+
+        freeGameNum = 0
+        
         for gameNum in range(numGames):
             seed1 = seeds[2 * gameNum]
             seed2 = seeds[2 * gameNum + 1]
@@ -263,12 +432,19 @@ def sampleRegion(fixedChampion=-1, fixedTopE8=-1, fixedBottomE8=-1, year=2020, m
             if isSeed1WinAutomatically:
                 p = 1.
             elif isSeed2WinAutomatically:
-                # should it be -1? 
                 p = 0.
+            elif roundNum == 1 or roundNum == 2:
+                if (freeGameNum in upsets[roundNum-1]):
+                    # force an upset
+                    p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model="pfNot")
+                else:
+                    p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model='pf')
+                freeGameNum += 1
             else:
                 # pf and pf not implemented here
                 p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model=model)
-
+                
+            
             rnd = random.random()
             regionVector.append(1 if rnd < p else 0)
             newSeeds.append(seed1 if rnd < p else seed2)
@@ -342,18 +518,18 @@ def getWinProbability(team1, team2, r, year, model):
 
     elif model == 'pf':
         if seed1 < seed2 :
-            return 1
+            return 1.
         elif seed1 > seed2:
-            return 0
+            return 0.
         else:
             exit('Invalid model \'{0}\' provided to getWinProbability.'.format(model))
             
 
     elif model == 'pfNot':
         if seed1 < seed2:
-            return 0
+            return 0.
         elif seed1 > seed2:
-            return 1
+            return 1.
         else:
             exit('Invalid model \'{0}\' provided to getWinProbability.'.format(model))
 
@@ -382,7 +558,7 @@ def generateBracketBradleyTerry(year):
     
     # Sample each of the four regions independently
     for r in range(4):
-        regionVector, f4Seeds[r] = sampleRegion(year=year, model='bradley-terry')
+        regionVector, f4Seeds[r] = sampleegion(year=year, model='bradley-terry')
         bracket += regionVector
 
     # Choose outcomes of F4 and NCG games
