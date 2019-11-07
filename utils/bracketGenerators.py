@@ -6,6 +6,7 @@ import bracketManipulations as bm
 import fileUtils
 import samplingFunctions
 from scoringFunctions import scoreBracket
+import scoringFunctions as sf
 import numpy as np
 
 ######################################################################
@@ -84,7 +85,7 @@ def freeGamesUpsets(fixedTopE8,fixedBottomE8,pickMethod,nR1,nR2):
     seeds = TOP_SEEDS + BOTTOM_SEEDS
 
     freeGamesR1 = [] # (x,y) stores the matchups
-    
+
     for gameNum in range(8):
         topSeed = seeds[2*gameNum]
         botSeed = seeds[2*gameNum+1]
@@ -198,7 +199,22 @@ def generateBracketPower(year, r, samplingFnName=None):
 
         if 'samplePower8Brute' in samplingFnName:
             samplingFn = getattr(samplingFunctions, "sampleE8")
-            sampledSeeds = samplingFn(year) 
+            sampledSeeds = samplingFn(year)
+
+        elif 'MST' in samplingFnName:
+            if 'samplePower8' in samplingFnName:
+                samplingFn = getattr(samplingFunctions, "sampleE8")
+                sampledSeeds = samplingFn(year)
+            
+        elif 'samplePower4' in samplingFnName:
+            if '4A' in samplingFnName:
+                samplingFn = getattr(samplingFunctions, "sampleF4A")
+                sampledSeeds = samplingFn(year)
+            else:
+                samplingFn = getattr(samplingFunctions, "sampleF4B")
+                sampledSeeds = samplingFn(year)
+
+                
         else:
             samplingFn = getattr(samplingFunctions, samplingFnName)
             sampledSeeds = samplingFn(year)  
@@ -262,6 +278,7 @@ def generateBracketPower(year, r, samplingFnName=None):
     if 'samplePower8Brute' in samplingFnName:
         roundIdp = None
         pickMethod = None
+        modelName = 'power'
         
         if samplingFnName == "samplePower8BrutePf":
             modelName = "pf"
@@ -302,7 +319,57 @@ def generateBracketPower(year, r, samplingFnName=None):
             bracket.append(aBracket)
         # at this point we are still missing the last 3 bits (2)F4 + (1) NCG
         return bracket
+    
+    elif 'MST' in samplingFnName:
+        if samplingFnName == "samplePower8HPPMST1":
+            # using power model to generate
+            
+            aBracket = []
+            for regionIndex in range(4):
+                regionVector, f4Seeds[regionIndex] = sampleRegion(
+                    fixedChampion=fixedChampions[regionIndex], 
+                    fixedTopE8=fixedTopE8s[regionIndex], 
+                    fixedBottomE8=fixedBottomE8s[regionIndex], 
+                    year=year
+                    )
+                aBracket += regionVector
+            return aBracket
+        # at this point we are still missing the last 3 bits (2)F4 + (1) NCG, but we good. We have our 60 bits
+        
+    
  
+    elif 'samplePower4' in samplingFnName:
+        roundIdp = None
+        pickMethod = None
+        modelName = "power"
+        
+        if samplingFnName == "samplePower4ABrutePf" or samplingFnName == "samplePower4BBrutePf":
+            modelName = "pf"
+        if samplingFnName == "samplePower4ABrutePfNot" or samplingFnName == "samplePower4BBrutePfNot":
+            modelName = "pfNot"
+
+        if samplingFnName == "samplePower4ABruteRandom1" or samplingFnName == "samplePower4BBruteRandom1":
+            
+            modelName = "pf"
+            roundIdp = False
+            pickMethod = "uni3" # so far there is uni and uni3, uni 3 incorporates round 3
+     
+        #f4Seeds[regionIndex] for    
+        for i in range(8):
+            aBracket = []
+            for regionIndex in range(4):
+                regionVector, f4Seeds[regionIndex] = sampleRegion(
+                    fixedChampion=fixedChampions[regionIndex], 
+                    fixedTopE8=fixedTopE8s[regionIndex], 
+                    fixedBottomE8=fixedBottomE8s[regionIndex], 
+                    year=year, 
+                    model=modelName,roundIdp = roundIdp, pickMethod = pickMethod)
+                aBracket += regionVector
+            bracket.append(aBracket)
+
+        return bracket
+       
+        
     else:
         for regionIndex in range(4):
             regionVector, f4Seeds[regionIndex] = sampleRegion(
@@ -393,6 +460,7 @@ regionWinner : int
     # determine the games to be upsets
     r1Upsets = []
     r2Upsets = []
+    r3Upsets = []
     nR1 = 0
     nR2 = 0
     if pickMethod is not None:
@@ -406,15 +474,24 @@ regionWinner : int
                 r1Upsets,r2Upsets = freeGamesUpsets(fixedTopE8,fixedBottomE8,pickMethod,nR1,nR2)
             
         else:
-            # for now only the random1 method gets here
-            upsetIdx = np.random.choice([i for i in range(8)])
-            if upsetIdx > 5:
-                r2Upsets.append(upsetIdx-6)
+            if pickMethod == "uni3": # fixed regional winner
+                upsetIdx = np.random.choice([i for i in range(7+3+1)])
+                if upsetIdx > 6 and upsetIdx < 11:
+                    r2Upsets.append(upsetIdx-7)
+                elif upsetIdx == 11:
+                    r3Upsets.append(0)
+                else:
+                    r1Upsets.append(upsetIdx)
             else:
-                r1Upsets.append(upsetIdx)
+            # for now only the random1 method gets here
+                upsetIdx = np.random.choice([i for i in range(8)])
+                if upsetIdx > 5:
+                    r2Upsets.append(upsetIdx-6)
+                else:
+                    r1Upsets.append(upsetIdx)
     # r#_upsets tells me if I should make the nth game that is not elite8 related an upset. AKA the freeGameNum
     
-    upsets = [r1Upsets,r2Upsets]
+    upsets = [r1Upsets,r2Upsets,r3Upsets]
     
     
     for roundNum in range(1, 5):
@@ -433,7 +510,7 @@ regionWinner : int
                 p = 1.
             elif isSeed2WinAutomatically:
                 p = 0.
-            elif roundNum == 1 or roundNum == 2:
+            elif roundNum == 1 or roundNum == 2 or roundNum == 3:
                 if (freeGameNum in upsets[roundNum-1]):
                     # force an upset
                     p = getWinProbability({'seed': seed1}, {'seed': seed2}, r=roundNum, year=year, model="pfNot")
@@ -590,6 +667,13 @@ def generateBracketsPickFavorite():
 
 
 if __name__ == '__main__':
+    sample = generateBracketPower(2019,4,"samplePower8HPPMST1")
+    print(len(sample))
+    lol = sf.HPP([1]*63,[1]*15+[1]*48,4)
+    print(lol)
+
+    
+    quit()
     # testPowerBracket = generateBracketPower(2019, 1)
     # print(scoreBracket(testPowerBracket, year=2019))
 
@@ -611,8 +695,7 @@ if __name__ == '__main__':
     # import pdb; pdb.set_trace()
 
     testPower8BruteBracket = generateBracketPower(2019, 4, 'samplePower8Brute')
-    print(testPower8BruteBracket
-    )
+    print(testPower8BruteBracket)
    # print(scoreBracket(testF4BBracket, year=2019))
 
     import pdb; pdb.set_trace()

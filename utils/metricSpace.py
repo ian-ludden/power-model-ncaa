@@ -33,6 +33,7 @@ def withinPfBall(toCheck,r):
         return False
 
 # filters out dupes and makes sure within that pfBall
+# also does conversion
 def spaceFilterDupePfBall(brackets,r = 1200):
     brackets = list(set([(bm.hexToString(i))[:60] for i in brackets]))
     brackets = [bm.stringToVector(i) for i in brackets]
@@ -94,49 +95,44 @@ def finiteMetricSpacePartition(jsonFile, r,repLimit = 25,upperBound = 5000):
 # takes in specified k, returns a size k set representative of the centers
 # greedy algorithm for 2 factor approximation for optimal k centers
 
-# repLimit in place if not tryna run all reps
-def kCenterClustering(jsonFile,k,repLimit = 25):
+def kCenterClustering(bracket,k):
 
-    brackets = jsonFile['brackets'] # 25 repetitions
+    curRep = spaceFilterDupePfBall(bracket)
 
-    clusters = list() # stores clusters for each rep
-    rs = list() # stores ball radius for each rep's cluster
-    
-    for rep in range(repLimit):
-        curRep = spaceFilterDupePfBall(brackets[rep])
-        
-        # introduce some randomness
-        permutation = np.random.permutation([i for i in range(len(curRep))])
-      
-        curRep = [curRep[i] for i in permutation]
-        
-        size = len(curRep)
-        
-        distance = [1930] * size # tracks current distance from each point to centers currently in centers set. Note max distance cannot exceed 1920
-        
-        centers = list()
-        centers.append(0) # first arbitrary point (idx)
-        distance[0] = 0
-        newCenterIdx = 0
-        
-        for i in range(k-1):
-            maxIdx = 0
-            maxDist = 0
-            for x in range(size):
-                if distance[x] == 0:
-                    continue
-                distance[x] = min(distance[x], sf.HPP(curRep[x],curRep[newCenterIdx]))
-                if (distance[x] >= maxDist):
-                    maxIdx = x
-                    maxDist = distance[x]
-                    
-            centers.add(maxIdx)
-            distance[maxIdx] = 0
-            newCenterIdx = x
-        r = max(distance) # the radius of them balls, 2 X approximation for optimal r given this k
-        clusters.append(centers)
-        rs.append(r)
-        
+    # introduce some randomness
+    permutation = np.random.permutation([i for i in range(len(curRep))])
+
+    curRep = [curRep[i] for i in permutation]
+
+    size = len(curRep)
+
+    distance = [1930] * size # tracks current distance from each point to centers currently in centers set. Note max distance cannot exceed 1920
+
+    centers = list()
+    centers.append(0) # first arbitrary point (idx)
+    distance[0] = 0
+    newCenterIdx = 0
+
+    for i in range(k-1):
+        maxIdx = 0
+        maxDist = 0
+        for x in range(size):
+            if distance[x] == 0:
+                continue
+            distance[x] = min(distance[x], sf.HPP(curRep[x],curRep[newCenterIdx]))
+            if (distance[x] >= maxDist):
+                maxIdx = x
+                maxDist = distance[x]
+        print([i,k-1],end="\r")
+
+        centers.append(maxIdx)
+        distance[maxIdx] = 0
+        newCenterIdx = x
+    r = max(distance) # the radius of them balls, 2 X approximation for optimal r given this k
+  
+
+    return centers,r
+
         
 
             
@@ -148,7 +144,7 @@ def generateFilepath(generatorPath,technique= "partition"):
 
 if __name__ == '__main__':
 
-    if True:
+    if False:
     # apply partitioning to existing genrator spaces. (for now only one year)
         sampleSize = 50000
         nReplications = 25
@@ -182,7 +178,7 @@ if __name__ == '__main__':
 
 
             
-    if False:
+    if True:
         # grab all the compressed spaces. Basically all the files in compressedOutputs
         # to grab files can use genreateFile path to query correct ones
 
@@ -194,20 +190,48 @@ if __name__ == '__main__':
             for one in GENERATION_TYPES:
                 partitionPaths.append(generateFilepath(bp.generateFilepath(sampleSize,year = year, model = MODEL_TYPES[one[0]], r = one[1], samplingFnName=one[2], nReplications = nReplications,folder = "compressedOutputs")))
 
-            aPgs = [set() for i in range(5)] # "s" because there are multiple reps
-        # union the compressed spaces, apply the pfBall to it.
-            
-            for one in partitionPaths:
-                with open(one,"r") as f:
-                    parition = json.load(f)
-                brackets = partition['bracket']
-                for rep in range(5):
-                    aPgs[rep].update(spaceFilterDupePfBall(brackets[rep]))
+            aPgs = dict() # (rep_r)  -> union space
+            # union the compressed spaces, apply the pfBall to it.
 
-            # aPgs now contains no dupes and all within pfBall
-                
-            
+            for rep in range(5):
+                for r in range(100,500,100):
+                    for one in partitionPaths:
+                        if str(rep)+"_"+str(r) not in aPgs:
+                            aPgs[str(rep)+"_"+str(r)] = set()
+                        
+                        with open(one,"r") as f:
+                            partition = json.load(f)
+                        aPgs[str(rep)+"_"+str(r)].update(partition[str(rep)+"_"+str(r)])
+                        print([rep,r],end="\r")
 
-            kCenters = dict()
+            # this step can wait, cus running is pretty quick
+            #for key in aPgs:
+             #   aPgs[key] = spaceFilterDupePfBall(aPgs[key])
+              #  print(key)
+            #with open("../Outputs/compressedOutputs/2013_compressed_5_reps.json",'w') as f:
+             #   f.write(json.dumps(aPgs))
+
+            # aPgs now contains no dupes and all within pfBall.
+ 
+            
+            print("now finding centers")
+            kCenters = dict() # for each (rep,r), run the various 
+
+            
+            
+            for key in aPgs:
+                print(key)
+                for pct in np.arange(0.2,1,0.2):
+                    k = int(len(aPgs[key]) * pct)
+                    kCs,mDs = kCenterClustering(aPgs[key],k)
+
+                    kCenters[key+"_"+str(pct)] = {"kCenters":kCs,"maxDists":mDs}
+                    print([key,pct])
+
+                    with open("../Outputs/compressedOutputs/2013_kCenters_5_reps.json",'w') as f:
+                        f.write(json.dumps(kCenters))
+ 
+            
+                    
         # compute a variety of k centers , store those k centers and corresponding r
         # save in compressedOutputs. name it _kcenter.json . . . .

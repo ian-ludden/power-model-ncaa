@@ -33,7 +33,8 @@ def loadResults2(nReplications = 25, sampleSize=50000,filepath=None):
         years = (data['year'].unique())
         models = (data['model'].unique())
         year_count = len(years)
-        model_count = len(models) 
+        model_count = len(models)
+        print(model_count)
         # because the way I named the bradleyTerry models included the unique year at end of name, hence there are repeats
 
         maxScores = np.zeros((model_count, year_count, nReplications)) # Indexed by model, year-2013, and replication
@@ -147,46 +148,46 @@ def runMCB(nReplications=25, sampleSize=50000, filepath=None):
 
                 maxScoresMatrix = maxScores[:, yearIndex, :].reshape((modelsCount, nReplications))
                 maxScoreMeans = maxScoresMatrix.mean(axis=1)
-                sys.stdout.write('Max Scores,\nAverage,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(maxScoreMeans[modelIndex]))
-                sys.stdout.write('\n')
+                #sys.stdout.write('Max Scores,\nAverage,')
+               # for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(maxScoreMeans[modelIndex]))
+                #sys.stdout.write('\n')
 
                 lowerBounds, upperBounds = mcb(maxScoresMatrix)
               
                 
-                sys.stdout.write('Interval LB,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(lowerBounds[modelIndex]))
-                sys.stdout.write('\nInterval UB,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(upperBounds[modelIndex]))
-                sys.stdout.write('\n\n')
+                #sys.stdout.write('Interval LB,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(lowerBounds[modelIndex]))
+                #sys.stdout.write('\nInterval UB,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(upperBounds[modelIndex]))
+                #sys.stdout.write('\n\n')
 
                 espnCountsMatrix = espnCounts[:, yearIndex, :].reshape((modelsCount, nReplications))
                 espnCountMeans = espnCountsMatrix.mean(axis=1)
-                sys.stdout.write('ESPN Counts,\nAverage,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(espnCountMeans[modelIndex]))
-                sys.stdout.write('\n')
+                #sys.stdout.write('ESPN Counts,\nAverage,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(espnCountMeans[modelIndex]))
+                #sys.stdout.write('\n')
 
                 lowerBounds2, upperBounds2 = mcb(espnCountsMatrix)
             
                 
-                sys.stdout.write('Interval LB,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(lowerBounds[modelIndex]))
-                sys.stdout.write('\nInterval UB,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.2f},'.format(upperBounds[modelIndex]))
-                sys.stdout.write('\n\n')
+                #sys.stdout.write('Interval LB,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(lowerBounds[modelIndex]))
+                #sys.stdout.write('\nInterval UB,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.2f},'.format(upperBounds[modelIndex]))
+                #sys.stdout.write('\n\n')
 
                 pfPropsMatrix = pfProps[:, yearIndex, :].reshape((modelsCount, nReplications))
                 pfPropMeans = pfPropsMatrix.mean(axis=1)
-                sys.stdout.write('PF Proportions,\nAverage,')
-                for modelIndex in range(modelsCount):
-                        sys.stdout.write('{0:.5f},'.format(pfPropMeans[modelIndex]))
-                sys.stdout.write('\n')
+                #sys.stdout.write('PF Proportions,\nAverage,')
+                #for modelIndex in range(modelsCount):
+                 #       sys.stdout.write('{0:.5f},'.format(pfPropMeans[modelIndex]))
+                #sys.stdout.write('\n')
 
                 
                 for i in range(modelsCount):

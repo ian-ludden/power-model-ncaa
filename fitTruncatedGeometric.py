@@ -18,12 +18,21 @@ from fitPowerModel import load_ref_brackets
 # 
 ######################################################################
 
+
+
+
+
+
 def calcAllRoundCounts(brackets):
     # TODO: document
     # roundCounts(i, j) = the number of times seed j reached round i
     # (0 indices are unused)
     roundCounts = np.zeros((8, 17))
 
+    # reason not 7 and 16, because we will be using 1 index, so seed 1 will correspond to index 1
+    # r0 (0), r1 (1) 64 teams . . . . . r(7) 2 teams
+    
+    
     counts = aggregate(brackets)
     for r in range(1, 7):
         for seedPair, seedGames in counts[r].items():
@@ -223,6 +232,9 @@ def getTruncatedGeometricPdf(actualCounts, maxVal):
     """
     totalCount = np.sum(actualCounts)
     weightedAvg = np.sum([i * actualCounts[i] for i in range(maxVal + 1)]) / totalCount
+
+    # E(x) = 1/p, p = E(x)^-1, E(x) = number of "flips", so i * actual counts will give me the number of flips.  But I do this "flipping" till correct totalCount times. So divide by total count to get E(x)
+    
     p = 1. / weightedAvg
     geomPdf = [0.] + [(1-p)**(i-1) * p for i in range(1, maxVal + 1)]
     pSum = np.sum(geomPdf)
@@ -289,6 +301,7 @@ def printAllTables():
         bracketsBeforeYear = [b for x, b in bracketsAll.items() if x < year]
         roundCounts[year - 2013, :, :] = calcAllRoundCounts(bracketsBeforeYear)
 
+    
     # Print E8 results
     print('Elite Eight,Modified 1 and 11')
     for year in range(minYear, maxYear + 1):
@@ -454,12 +467,16 @@ def printParametersOnly():
         bracketsBeforeYear = [b for x, b in bracketsAll.items() if x < year]
         roundCounts[year - 2013, :, :] = calcAllRoundCounts(bracketsBeforeYear)
 
+
+
+
     # Print E8 parameters
     print('Elite Eight,Modified 1 and 11')
     print('year,modFreq1,pTop,pSumTop,pChoose1,modFreq11,pBot,pSumBot,pChoose11')
     for year in range(minYear, maxYear + 1):
         roundCountsYear = roundCounts[year - 2013, :, :]
-        freqs = roundCountsYear[4, :]
+        freqs = roundCountsYear[4, :] # freqs to read elite 8 round (r4)
+        
         topSeeds = [1, 4, 5, 8, 9, 12, 13, 16]
         bottomSeeds = [2, 3, 6, 7, 10, 11, 14, 15]
         topFreqs = [0] + [int(freqs[i]) for i in topSeeds]
@@ -471,7 +488,7 @@ def printParametersOnly():
         
         # Print 'top' parameters
         modTopFreqs = np.copy(topFreqs)
-        modTopFreqs[1] = freq1_E8
+        modTopFreqs[1] = freq1_E8 # modified first seed occurences 
         pMod, pSumMod, pdfMod = getTruncatedGeometricPdf(actualCounts=modTopFreqs, maxVal=8)
         sys.stdout.write('{0},{1},{2:.4f},{3:.4f},{4:.4f},'.format(year, freq1_E8, pMod, pSumMod, pChoose1_E8))
 
@@ -532,4 +549,4 @@ def printParametersOnly():
 
 if __name__ == '__main__':
     printParametersOnly()
-    # printAllTables()
+    #printAllTables()

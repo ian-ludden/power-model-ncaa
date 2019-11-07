@@ -6,6 +6,9 @@ import os
 from pprint import pprint
 import random
 import sys
+import itertools 
+
+
 
 import bracketGenerators as bg
 import bracketManipulations as bm
@@ -22,10 +25,10 @@ import scoringFunctions as sf
 # 
 ######################################################################
 
-MODEL_TYPES = ['bradleyTerry','power']
-GENERATION_TYPES = [(0,1,None),(1,1,None),(1,1,'sampleE8'),(1,5,'sampleF4A'),(1,5,'sampleF5B'),(1,6,'sampleNCG'),(1,4,'samplePower8Brute'),(1,4,'samplePower8BrutePf'),(1,4,'samplePower8BrutePfNot'),(1,4,'samplePower8BruteRandom1'),(1,4,'samplePower8BruteRPickedUni'),(1,4,'samplePower8BruteRPickedTopN'),(1,4,'samplePower8BruteRPickedHistDist')]
+MODEL_TYPES = ['bradley-terry','power']
+GENERATION_TYPES = [(0,1,None),(1,1,None),(1,4,'sampleE8'),(1,5,'sampleF4A'),(1,5,'sampleF4B'),(1,6,'sampleNCG'),(1,4,'samplePower8Brute'),(1,4,'samplePower8BrutePf'),(1,4,'samplePower8BruteRandom1'),(1,4,'samplePower8BruteRPickedUni'),(1,4,'samplePower8BruteRPickedTopN'),(1,4,'samplePower8BruteRPickedHistDist'),(1,5,'samplePower4ABrute'),(1,5,'samplePower4ABrutePf'),(1,5,'samplePower4ABrutePfNot'),(1,5,'samplePower4BBrute'),(1,5,'samplePower4BBrutePf'),(1,5,'samplePower4BBrutePfNot'),(1,5,'samplePower4BBruteRandom1'),(1,5,'samplePower4ARandom1'),(1,4,'samplePower8BrutePfNot'),(1,4,'samplePower8HPPMST1')]
 
-GENERATION_TYPES = GENERATION_TYPES[-4:]
+GENERATION_TYPES = [GENERATION_TYPES[-1]]
 
 ######################################################################
 # Generator Naming 
@@ -49,6 +52,7 @@ GENERATION_TYPES = GENERATION_TYPES[-4:]
 NUM_GENERATORS = len(GENERATION_TYPES)
 # is it worthwile for a global var if there will be more models in future
 # NUM_GENERATORS get up to date number in read and score
+
 
 
 def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=None):
@@ -78,10 +82,85 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
         """
         brackets = []
 
-        
-        #if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]:
 
-        if 'samplePower8Brute' in samplingFnName:
+
+        if 'MST' in samplingFnName:
+                # mst
+                roundIdp = None
+                pickMethod = None
+                modelName = 'power'
+                
+                if 'samplePower8HPPMST1' == samplingFnName:
+                        pf128 = list() # all 128 pick favorite elite 8
+                        brute128 = list() # all 128 bit string changes
+                        for i in range(128):
+                                pf = [1] * 60
+                                bitString = "{:07b}".format(i)
+                                bitString = [i for i in bitString]
+                                brute128.append(bitString)
+                                pf[14] = bitString[0]
+                                pf[29] = bitString[1]
+                                pf[44] = bitString[2]
+                                pf[59] = bitString[3]
+                                pf.extend(bitString[4:])
+                                pf128.append(bm.stringToHex(bm.vectorToString(pf)))
+
+                        adjacencyList = list()
+                        adjacencyList.append(list()) # index 0 is pf, stores the edges in the mst, an edge is a tuple(z,x,y), z weight, x and y vertices
+
+                        alTable = list() # vertices 0 to n, stores the bracket vectors, 60 bit version
+                        pfStart = [1]*60
+                        alTable.append(pfStart)
+
+                        # only need to worry about the first 60 bits
+                        brackets.extend(pf128) # initial points
+
+                        index = 128
+                        
+                        while index < size:
+                                nextBrackets = list()
+                                beta = 7
+                                for possibility in range(7):
+                                        while(True):
+                                                aBracket = bg.generateBracketPower(year,r,samplingFnName)
+                                                if (aBracket not in alTable) and (sf.HPP(pfStart,aBracket,3) < 1250):
+                                                        break # check if already a duplicate
+                                                
+                                        nextBrackets.append(aBracket)
+                                # now we have the beta potential brackets, 60 bits
+                                nextStepMST = list()
+                                for newBracket in nextBrackets:
+                                        nextStepMST.append(sf.mstNewBracket(adjacencyList, alTable,newBracket,3))
+
+                                # gets index of maximum mst cost        
+                                toAddIdx = nextStepMST.index(max(nextStepMST,key=lambda x:x[1]))
+
+                                adjacencyList = nextStepMST[toAddIdx][0]
+                                newBracket = nextBrackets[toAddIdx]
+                                alTable.append(newBracket)
+
+                                new_128 = list()
+                                newBracket.extend([0]*3)
+                                for bitString in brute128:
+                                        
+                                        newBracket[14] = bitString[0]
+                                        newBracket[29] = bitString[1]
+                                        newBracket[44] = bitString[2]
+                                        newBracket[59] = bitString[3]
+                                        newBracket[-3:] = bitString[-3:]
+                                        new_128.append(bm.stringToHex(bm.vectorToString(newBracket)))
+                        
+                                brackets.extend(new_128)
+                                print("128 done" + "  " + str(index))
+                                index+=128
+                                
+                                        
+                return brackets
+        
+        
+        #if samplingFnName in ["samplePower8Brute","samplePower8BrutePf","samplePower8BrutePfNot"]
+        
+        elif 'samplePower8Brute' in samplingFnName:
                 # special case, one call to bg.generateBracketPower will return a vector of string brackets of size 2^7 (128).
                 
                 # initial loop to contain the number of fixed 8's to use
@@ -99,6 +178,18 @@ def generateBracketPool(size, year=2020, model='power', r=-1, samplingFnName=Non
                                 aBracket[59] = bitString[3]
                                 aBracket.extend(bitString[4:])
                                 brackets.append(bm.stringToHex(bm.vectorToString(aBracket)))
+                               
+        elif 'samplePower4' in samplingFnName:
+                for index in range(int(size/8)):
+                        newBracket = bg.generateBracketPower(year,r,samplingFnName)
+                        for bracketIndex,aBracket in enumerate(newBracket):
+                                bitString = "{:03b}".format(bracketIndex)
+                                bitString = [i for i in bitString]
+                                aBracket.extend(bitString)
+                                brackets.append(bm.stringToHex(bm.vectorToString(aBracket)))
+
+                        
+
                 
                 
         else:
@@ -134,12 +225,16 @@ def createAndSaveBracketPool(sampleSize, year=2020, model='power', r=1, sampling
                 outputFile.write(json.dumps(outputDict))
 
 
-def generateFilepath(sampleSize, year=2020, model='power', r=1, samplingFnName=None, nReplications=1):
+def generateFilepath(sampleSize, year=2020, model='power', r=1, samplingFnName=None, nReplications=1, folder = "generatorOutputs"):
         """Generates the path to the JSON file containing the experiment batch with the given parameters."""
+
+        # folder generatorOutputs : stores the generator outputs
+        # folder compressedOutputs : stores summarized versions
+        
         homeDir = os.path.expanduser('~')
         filepath = '{0}/Documents/GitHub/power-model-ncaa/out'.format(homeDir)
         # my filepath
-        filepath = '{0}/Documents/Research/Sheldon Jacobson/power-model-ncaa/Outputs'.format(homeDir)
+        filepath = ('{0}/Documents/Research/Sheldon Jacobson/power-model-ncaa/Outputs/'+folder).format(homeDir)
 
         if not os.path.exists(filepath):
                 os.makedirs(filepath)
@@ -164,42 +259,8 @@ def runSamples(nReplications, sampleSize):
                         createAndSaveBracketPool(sampleSize, year=year, model=MODEL_TYPES[one[0]], r=one[1], 
                         samplingFnName=one[2], nReplications=nReplications)
 
-                
-                # Bradley-Terry
-               #  createAndSaveBracketPool(sampleSize, year=year, model='bradley-terry', 
-               #          nReplications=nReplications)
-
-               #  # Power: r = 1
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', 
-               #          nReplications=nReplications)
-
-               #  # Power: r = 4
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-               #          samplingFnName='sampleE8', nReplications=nReplications)
-
-               #  # Power: r = 5, sampleF4A
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-               #          samplingFnName='sampleF4A', nReplications=nReplications)
-
-               #  # Power: r = 5, sampleF4B
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=5, 
-               #          samplingFnName='sampleF4B', nReplications=nReplications)
-
-               #   # Power: r = 6
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=6, 
-               #          samplingFnName='sampleNCG', nReplications=nReplications)
-
-               # # Power: r=4
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-               #          samplingFnName='samplePower8Brute', nReplications=nReplications)
-               # # Power: r=4
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-               #          samplingFnName='samplePower8BrutePf', nReplications=nReplications)
-               # # Power: r=4
-               #  createAndSaveBracketPool(sampleSize, year=year, model='power', r=4, 
-               #          samplingFnName='samplePower8BrutePfNot', nReplications=nReplications)
   
-
+# scores a bracket from json file 
 def readAndScore(nReplications, sampleSize):
         """Reads the JSON files for all experiment batches, 
         scores the brackets, and 
@@ -211,22 +272,6 @@ def readAndScore(nReplications, sampleSize):
                 for one in GENERATION_TYPES:
                         filepaths.append(generateFilepath(sampleSize,year = year, model = MODEL_TYPES[one[0]], r = one[1], samplingFnName=one[2], nReplications = nReplications))
                         
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='bradley-terry', 
-                #         nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', 
-                #         nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=4, 
-                #         samplingFnName='sampleE8', nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-                #         samplingFnName='sampleF4A', nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=5, 
-                #         samplingFnName='sampleF4B', nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize, year=year, model='power', r=6, 
-                #         samplingFnName='sampleNCG', nReplications=nReplications))
-                # filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8Brute', nReplications = nReplications))
-                #filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePf', nReplications = nReplications))
-                #filepaths.append(generateFilepath(sampleSize,year = year, model = 'power', r = 4, samplingFnName='samplePower8BrutePfNot', nReplications = nReplications))
-
  
                 # statistics to compute
                 # in json file, will store a nReplications long array for each statistic
@@ -255,13 +300,14 @@ def readAndScore(nReplications, sampleSize):
                         with open(filepath, 'r') as f:
                                 data = json.load(f)
                                 print("opened file " + str(fIndex+1)+"/"+str(totalFiles))
- 
+                        
                         brackets = data['brackets']
                         for repIndex, sample in enumerate(brackets):
-
                                 # instantiates a vector that contains all scores in one sample. To compute statistics on scores, do it here.
                                 scores = np.zeros(sampleSize)
                                 for bracketIndex, bracketHex in enumerate(sample):
+                                        if(bracketIndex) >= sampleSize:
+                                                break
                                         bracketVector = bm.stringToVector(bm.hexToString(bracketHex))
                                         scores[bracketIndex] = sf.scoreBracket(bracketVector, year=year)[0]
 
@@ -338,19 +384,140 @@ if __name__ == '__main__':
         sampleSize = 50000
         nReplications = 25
 
-        runSamples(nReplications=nReplications, sampleSize=sampleSize)
+        #nReplications = 9 # for mst takes to long
+
+        #runSamples(nReplications=nReplications, sampleSize=sampleSize)
 
         # solo power8BrutePf and Pfnot
         # for year in range(2013,2020):
         #         createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8BrutePf',nReplications = nReplications)
         #         createAndSaveBracketPool(sampleSize,year = year,model = 'power',r=4,samplingFnName='samplePower8BrutePfNot',nReplications = nReplications)
         
-        print("done samplying, starting scoring")
-        readAndScore(nReplications=nReplications, sampleSize=sampleSize)
+        #print("done samplying, starting scoring")
+        #readAndScore(nReplications=nReplications, sampleSize=sampleSize)
 
+        #quit()
+
+        # getting the score pairwise difference distributions 
+
+
+        # files = os.listdir("../Outputs")
+        # entries = []
+
+        # for file in files:
+        #         name = file.split("_")
+        #         method = name[0]
+        
+        #         sample = name[-1].split(".")[0]
+        #         year = name[4] if method == "power" else sample
+        #         if method == "power":
+        #                 entries.append(["../Outputs/"+file,method+sample,int(year)])
+        #         else:
+        #                 entries.append(["../Outputs/"+file,"bradley-terry",int(year)])
+                
+        # distributions = dict()
+
+        # count = 0
+        # for file_path,generator,year in entries:
+        #         count+=1
+        #         print(count)
+        #         if generator not in distributions:
+        #                 distributions[generator] = dict()
+
+        #         with open(file_path) as f:
+        #                 data = json.load(f)
+                
+        #         size  = len(data["brackets"][0])
+        #         # 25 different repeitions. From the 25 * 50k, sample 1000.
+        #         sample = (np.random.choice([i for i in range(25 * size)],replace = False, size = 100000))
+        #         sample1 = ([(np.floor(i/size),i%size) for i in sample])
+        #         sample2 = [ bm.stringToVector(bm.hexToString(data["brackets"][int(i[0])][i[1]])) for i in sample1]
+        #         # the 63 bit vectors
+        #         differences = list()
+        #         #lol = itertools.combinations(sample2,2)
+        #         #for i in lol:
+        #             #differences.append(1920 - sf.scoreBracket(i[0],i[1])[0])
+        #         #distributions[generator][year]  = (np.histogram(differences, [i*10 for i in range(194)])[0]).tolist()
+        #         for sample in sample2:
+        #                 differences.append(1920 - sf.HPP([1]*60,sample,4))
+        #         distributions[generator][year] = (np.histogram(differences,[i*10 for i in range(194)])[0]).tolist()
+        #         print(generator,year)
+
+
+
+        # with open('pfRel_HPP_2013_2019_models.json','w') as json_file:
+        #         json.dump(distributions,json_file)
+
+        # quit()
+
+        
+        pastWin = dict()
+        with open("../allBracketsTTT.json","r") as file:
+                historical = json.load(file)
+        for i in historical["brackets"]:
+                pastWin[i["bracket"]["year"]]=(bm.stringToVector(i["bracket"]['fullvector']))
+
+
+        upUntilNow = dict()
+        # using all availble previous years
+        for year in range(1986,2020):
+                allPrev = list()
+                for prev in range(1985,year):
+                        allPrev.append(pastWin[str(prev)])
+
+                scores = list()
+                for prev in allPrev:
+                        scores.append(sf.HPP(pastWin[str(year)][:60],prev[:60],4))
+                upUntilNow[year] = scores
+
+
+
+                
+        # for computing the historical pf results relative to actual results
+        
+        # pfBracket = [1] * 60
+        # for year in pastWin:
+        #         that_year = pastWin[year]
+                #year_scores = list()
+                #for i in range(0,8):
+                #       bitString = "{:03b}".format(i)
+                #      bitString = [i for i in bitString]
+                        #year_scores.append(sum(sf.scoreBracket(pfBracket+bitString,actualResultsVector = that_year)))
+                #print(1920 - max(year_scores))
+                #pastWin[year] = 1920 - max(year_scores)
+        #with open('HPP_pf_historical.json', 'w') as json_file:
+        #       json.dump(pastWin, json_file)
+
+        
+        
+        
+
+
+        
+        # for year in pastWin:
+        #         that_year = pastWin[year]
+        #         rotations = dict()
+                
+        #         region1 = that_year[:15]
+        #         region2 = that_year[15:30]
+        #         region3 = that_year[30:45]
+        #         region4 = that_year[45:60]
+        #         regions = [region1,region2,region3,region4]
+        #         for i in itertools.permutations("1234"):
+        #                 reordered = regions[int(i[0])-1] + regions[int(i[1])-1] + regions[int(i[2])-1] + regions[int(i[3])-1]
+        #                 rotations[(i[0]+i[1]+i[2]+i[3])] = (sf.scoreBracket(reordered+that_year[-3:],actualResultsVector = that_year)[0])
+
+        #         pastWin[year] = rotations
+
+         
+        with open('previousYearsHPPWithCurrent.json','w') as json_file:
+                json.dump(upUntilNow,json_file)
+        
 
         quit()
 
+        
+        
         year = 2016
         filepath = generateFilepath(sampleSize, year=year, model='power', nReplications=nReplications)
         with open(filepath, 'r') as f:
