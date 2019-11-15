@@ -148,45 +148,23 @@ upsetsList = []
 for tupl in brackets:
     upsetsList.append(upsetsWeightedCalc(tupl[0], tupl[1], tupl[2]))
 
-formattedUpsetsList = []
+df = pd.DataFrame(upsetsList)
 
-for upsets in upsetsList:
-    #create new dictionary that has southeast changed to south etc
-    if ('Southeast' in upsets.keys() and not('Southwest' in upsets.keys())):
-        formattedUpsetsList.append({'Year': int(upsets['Year']), 'Midwest': upsets['Midwest'], 'West': upsets['West'], 'East': upsets['East'], 'South': upsets['Southeast']})
-    elif ('Southwest' in upsets.keys()):
-        formattedUpsetsList.append({'Year': int(upsets['Year']), 'Midwest': upsets['Southwest'], 'West': upsets['West'], 'East': upsets['East'], 'South': upsets['Southeast']})
-    else:
-        formattedUpsetsList.append({'Year': int(upsets['Year']), 'Midwest': upsets['Midwest'], 'West': upsets['West'], 'East': upsets['East'], 'South': upsets['South']})
+worstRegions = df.max(axis=1).tolist()
+bestRegions = df.min(axis=1).tolist()
 
+years = []
+for year in range(1985, 2020):
+    years.append(year)
 
-df = pd.DataFrame(formattedUpsetsList)
+fig, axs = plt.subplots(2)
 
-fig, axs = plt.subplots(4)
+axs[0].scatter(years, worstRegions)
+axs[0].plot(years, worstRegions)
+axs[0].set_title("Max Weighted Upsets")
+axs[1].scatter(years, bestRegions)
+axs[1].plot(years, bestRegions)
+axs[1].set_title("Min Weighted Upsets")
 
-axs[0].scatter(df['Year'], df['Midwest'])
-axs[0].plot(df['Year'], df['Midwest'], label = 'Midwest')
-axs[0].legend(loc = 2)
-axs[0].set_xticks(range(1985, 2019, 4))
-axs[0].set_yticks(range(0, 60, 10))
-
-axs[1].scatter(df['Year'], df['West'])
-axs[1].plot(df['Year'], df['West'], label = 'West')
-axs[1].legend(loc = 2)
-axs[1].set_xticks(range(1985, 2019, 4))
-axs[1].set_yticks(range(0, 60, 10))
-
-axs[2].scatter(df['Year'], df['East'])
-axs[2].plot(df['Year'], df['East'], label = 'East')
-axs[2].legend(loc = 2)
-axs[2].set_xticks(range(1985, 2019, 4))
-axs[2].set_yticks(range(0, 60, 10))
-
-axs[3].scatter(df['Year'], df['South'])
-axs[3].plot(df['Year'], df['South'], label = 'South')
-axs[3].legend(loc = 2)
-axs[3].set_xticks(range(1985, 2019, 4))
-axs[3].set_yticks(range(0, 60, 10))
-
-plt.suptitle("Number of Weighted Upsets Per Year for each Region")
+fig.tight_layout()
 plt.show()
