@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def upsetsWeightedCalc(year, strVector, regions):
+def upsetsCalc(year, strVector, regions):
     vector = bm.stringToVector(strVector)
     firstRoundList = bm.bracketToSeeds(vector)[0]
     firstRoundRegions = []
@@ -47,9 +47,7 @@ def upsetsWeightedCalc(year, strVector, regions):
             region.append(fifthRoundList[x+y])
         fifthRoundRegions.append(region)
 
-    #upsetsList = [0, 0, 0, 0]
     upsetsList = {'Year': year, regions[0]: 0, regions[1]: 0, regions[2]: 0, regions[3]: 0}
-    #Python tuples are immutable so using a dictionary or map may be better.
 
     for i in range (0, len(firstRoundRegions)):
         numUpsetsForRegion = 0
@@ -64,9 +62,7 @@ def upsetsWeightedCalc(year, strVector, regions):
             seedOne = tupl[0]
             seedTwo = tupl[1]
             if (secondRoundRegion[j] == max(seedOne, seedTwo) and (seedOne != 8 and seedTwo != 9)):
-                numUpsetsForRegion += secondRoundRegion[j] - min(seedOne, seedTwo)
-        
-        #upsetsList[i] += numUpsetsForRegion
+                numUpsetsForRegion += 1
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(secondRoundRegions)):
@@ -82,9 +78,7 @@ def upsetsWeightedCalc(year, strVector, regions):
             seedOne = tupl[0]
             seedTwo = tupl[1]
             if (thirdRoundRegion[j] == max(seedOne, seedTwo)):
-                numUpsetsForRegion += thirdRoundRegion[j] - min(seedOne, seedTwo) #should be min?
-        
-        # upsetsList[i] += numUpsetsForRegion
+                numUpsetsForRegion += 1
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(thirdRoundRegions)):
@@ -100,9 +94,7 @@ def upsetsWeightedCalc(year, strVector, regions):
             seedOne = tupl[0]
             seedTwo = tupl[1]
             if (fourthRoundRegion[j] == max(seedOne, seedTwo)):
-                numUpsetsForRegion += fourthRoundRegion[j] - min(seedOne, seedTwo)
-        
-        # upsetsList[i] += numUpsetsForRegion
+                numUpsetsForRegion += 1
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(fourthRoundRegions)):
@@ -118,16 +110,9 @@ def upsetsWeightedCalc(year, strVector, regions):
             seedOne = tupl[0]
             seedTwo = tupl[1]
             if (fifthRoundRegion[j] == max(seedOne, seedTwo)):
-                numUpsetsForRegion += fifthRoundRegion[j] - min(seedOne, seedTwo)
-        
-        # upsetsList[i] += numUpsetsForRegion
+                numUpsetsForRegion += 1
         upsetsList[regions[i]] += numUpsetsForRegion
     return upsetsList
-
-
-# current_directory = os.path.dirname(__file__)
-# parent_directory = os.path.split(current_directory)[0]
-# filePath = os.path.join(os.path.split(current_directory)[0], 'allBracketsTTT.json')
 
 filePath = 'allBracketsTTT.json'
 
@@ -146,7 +131,7 @@ with open (filePath) as jsonFile:
 upsetsList = []
 
 for tupl in brackets:
-    upsetsList.append(upsetsWeightedCalc(tupl[0], tupl[1], tupl[2]))
+    upsetsList.append(upsetsCalc(tupl[0], tupl[1], tupl[2]))
 
 df = pd.DataFrame(upsetsList)
 
@@ -157,33 +142,17 @@ years = []
 for year in range(1985, 2020):
     years.append(year)
 
-print(worstRegions)
-print()
-print(bestRegions)
+plt.scatter(years, df['Midwest'])
+plt.plot(years, df['Midwest'])
+plt.scatter(years, df['East'])
+plt.plot(years, df['East'])
+plt.scatter(years, df['South'])
+plt.plot(years, df['South'])
+plt.scatter(years, df['Southeast'])
+plt.plot(years, df['Southeast'])
+plt.scatter(years, df['Southwest'])
+plt.plot(years, df['Southwest'])
+plt.scatter(years, df['West'])
+plt.plot(years, df['West'])
 
-fig, axs = plt.subplots(2)
-
-axs[0].hist(worstRegions, [5,10,15,20,25,30,35,40,45,50,55], (5,55))   
-axs[0].set_xticks(range(5,60,5))
-# axs[0].hist(worstRegions)
-axs[0].set_title("Max Weighted Upsets")
-axs[1].hist(bestRegions, [0,1,2,3,4,5,6,7,8,9,10], (0,10))
-axs[1].set_xticks(range(0,11))
-# axs[1].hist(bestRegions)
-axs[1].set_title("Min Weighted Upsets")
-
-fig.tight_layout()
-# rcParams['figure.figsize'] = [10, 5]
 plt.show()
-
-# fig, axs = plt.subplots(2)
-
-# axs[0].scatter(years, worstRegions)
-# axs[0].plot(years, worstRegions)
-# axs[0].set_title("Max Weighted Upsets")
-# axs[1].scatter(years, bestRegions)
-# axs[1].plot(years, bestRegions)
-# axs[1].set_title("Min Weighted Upsets")
-
-# fig.tight_layout()
-# plt.show()

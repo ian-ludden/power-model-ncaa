@@ -47,9 +47,7 @@ def upsetsCalc(year, strVector, regions):
             region.append(fifthRoundList[x+y])
         fifthRoundRegions.append(region)
 
-    #upsetsList = [0, 0, 0, 0]
     upsetsList = {'Year': year, regions[0]: 0, regions[1]: 0, regions[2]: 0, regions[3]: 0}
-    #Python tuples are immutable so using a dictionary or map may be better.
 
     for i in range (0, len(firstRoundRegions)):
         numUpsetsForRegion = 0
@@ -63,10 +61,8 @@ def upsetsCalc(year, strVector, regions):
             tupl = pairs[j]
             seedOne = tupl[0]
             seedTwo = tupl[1]
-            if (secondRoundRegion[j] == max(seedOne, seedTwo)):
+            if (secondRoundRegion[j] == max(seedOne, seedTwo) and (seedOne != 8 and seedTwo != 9)):
                 numUpsetsForRegion += 1
-        
-        #upsetsList[i] += numUpsetsForRegion
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(secondRoundRegions)):
@@ -83,8 +79,6 @@ def upsetsCalc(year, strVector, regions):
             seedTwo = tupl[1]
             if (thirdRoundRegion[j] == max(seedOne, seedTwo)):
                 numUpsetsForRegion += 1
-        
-        # upsetsList[i] += numUpsetsForRegion
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(thirdRoundRegions)):
@@ -101,8 +95,6 @@ def upsetsCalc(year, strVector, regions):
             seedTwo = tupl[1]
             if (fourthRoundRegion[j] == max(seedOne, seedTwo)):
                 numUpsetsForRegion += 1
-        
-        # upsetsList[i] += numUpsetsForRegion
         upsetsList[regions[i]] += numUpsetsForRegion
 
     for i in range (0, len(fourthRoundRegions)):
@@ -119,15 +111,8 @@ def upsetsCalc(year, strVector, regions):
             seedTwo = tupl[1]
             if (fifthRoundRegion[j] == max(seedOne, seedTwo)):
                 numUpsetsForRegion += 1
-        
-        # upsetsList[i] += numUpsetsForRegion
         upsetsList[regions[i]] += numUpsetsForRegion
     return upsetsList
-
-
-# current_directory = os.path.dirname(__file__)
-# parent_directory = os.path.split(current_directory)[0]
-# filePath = os.path.join(os.path.split(current_directory)[0], 'allBracketsTTT.json')
 
 filePath = 'allBracketsTTT.json'
 
@@ -159,11 +144,21 @@ for year in range(1985, 2020):
 
 fig, axs = plt.subplots(2)
 
-axs[0].scatter(years, worstRegions)
-axs[0].plot(years, worstRegions)
+# axs[0].scatter(years, worstRegions)
+# axs[0].plot(years, worstRegions)
+# axs[0].set_title("Max Upsets")
+# axs[1].scatter(years, bestRegions)
+# axs[1].plot(years, bestRegions)
+# axs[1].set_title("Min Upsets")
+
+worstRegions = [round(x) for x in worstRegions]
+bestRegions = [round(x) for x in bestRegions]
+
+print (worstRegions)
+
+axs[0].hist(worstRegions, [3,4,5,6,7,8,9,10], (3,10))
 axs[0].set_title("Max Upsets")
-axs[1].scatter(years, bestRegions)
-axs[1].plot(years, bestRegions)
+axs[1].hist(bestRegions, [0,1,2,3,4,5,6], (1,6))
 axs[1].set_title("Min Upsets")
 
 fig.tight_layout()
