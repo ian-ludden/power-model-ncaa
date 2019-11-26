@@ -133,7 +133,128 @@ def kCenterClustering(bracket,k):
 
     return centers,r
 
+
+# give a bracket, return the brackets that are within HPP r (give in 1,2,4,8 form, non trailing zero), HPP here is computed up to upTo round, inclusive of that round. Finishes that round
+# given bracket is in vector form
+
+# each bracket's 2^i - 1 bit represenation, B, can undergo a xor operation with another 2^i - 1 bit string, N, such that B xor N = 1^(2^i - 1)
+
+# not advisable to go beyond r = 60, 100 k for 70 and 300k for 80
+# r input is on 1,2,4,8 scale
+def findBracketsWithinR(bracket,r,upTo = 6):
+    brackets = [list() for i in range(r+1)] # each index stores the bracket such that they are index away from correct
+ 
+    # write a [15][15][15][15][3] -> [32][16][8][4][2][1]  to round by round bits
+    
+    # A_i,k, A's ith round k game. In bit string,
+    # possible k is 2^(6-i) for round i, 1 to 6
+    # [32][16][8][4][2][1]
+    # per 2 is a unit, unit has the (even,odd)
+
+    bitTracking = [list() for i in range(r+1)] # actual bits, each index stores a list of the bit brackets with its corresponding last match, 1 being last one matches
+    bitTracking[0] = [[[1],1]]
+    bitTracking[1] = [[[0],0]]
+    
+    rCounts = [0 for i in range(193)]
+    rCounts[0] =1
+    rCounts[1] =1
+    
+    matchCounts = [0 for i in range(193)]
+    matchCounts[0] = 1
+    matchCounts[1] = 0
+
+    for I in range(1,upTo):
+        tempRCounts = [0 for i in range(193)]
+        tempMatchCounts = [0 for i in range(193)]
+        #print(rCounts)
+        for idx1,count1 in enumerate(rCounts):
+            if(count1 == 0):
+                continue
+            for idx2, count2 in enumerate(rCounts):
+                if(count2 == 0):
+                    continue
+                tempRCounts[idx1+idx2] += count1 * count2                
+                tempMatchCounts[idx1+idx2] += matchCounts[idx1]*count2
+
+                if idx1+idx2 < r+1:
+                    for part1 in bitTracking[idx1]:
+                        for part2 in bitTracking[idx2]:
+                            brackets[idx1+idx2].append([part1[0]+part2[0],part1[1]])
+                
+                #print(count1*count2)
+
+        rCounts = [0 for i in range(193)]
+        matchCounts = [0 for i in range(193)]
+
+        bitTracking = [list() for i in range(r+1)]
+
+        for idx,count in enumerate(tempRCounts):
+            if idx+2**I > 192:
+                continue
+            rCounts[idx] += tempMatchCounts[idx]
+            matchCounts[idx] += tempMatchCounts[idx]
+            rCounts[idx+2**I] += (tempMatchCounts[idx] + 2*(tempRCounts[idx]-tempMatchCounts[idx]))
+
+            
+            if idx < r+1:
+                for preC in brackets[idx]:
+                    if(preC[1] == 1):
+                        # match case, stay here
+                        bitTracking[idx].append([preC[0]+[1],1])
+                    else:
+                        # unmatch case despite picking top
+                        if(idx+2**I < r+1):
+                            bitTracking[idx+2**I].append([preC[0]+[1],0])
+
+                    
+                    if(idx+2**I < r+1):
+                        bitTracking[idx + 2**I].append([preC[0]+[0],0])
+
+        brackets = [list() for i in range(r+1)] 
+    #print(rCounts)
+    #print(bitTracking)
+
+    # generate xor bit from original
+    pfBin = bm.vectorToString([1]*63)
+    rotation = "{0:063b}".format(int(bm.vectorToString(bracket),2) ^ int(pfBin,2))
+
+    
+    finalBrackets = dict() # hex representation to distance
+    for r,allR in enumerate(bitTracking):
+        for idx,aBracket in enumerate(allR):
+            #print(idx)
+            # have to reformat aBracket, still in [32][16]. . .[1] format 
+
+            #actual = bm.stringToVector("{0:063b}".format(int(bm.vectorToString(aBracket[0]),2) ^ int(rotation,2)))
+            actual = aBracket[0]
+            
+            #print("before",actual)
+            actual = bm.binaryCombineToRound(actual)
+            #print("after",actual)
+            # I need to rotate
+            # actual = aBracket xor Rotation, it is off, I need to compare the bits for actual and 1
+           
+            actual = bm.pfToOriginal(actual,bm.regionToRound(bracket))
+            actual = bm.roundToRegion((actual))
+          
+            
+            
+            finalBrackets[ bm.stringToHex(bm.vectorToString(bm.roundToRegion(actual)))  ] = r
+            #finalBrackets[bm.vectorToString((actual))] = r
+
+            # verifies if correct
+            # if incorrect will out put wrong
+            if sf.scoreBracket(actual,actualResultsVector=bracket)[0] != 1920 - (10*r):
+                #print("score",sf.scoreBracket(actual,actualResultsVector=bracket)[0])
+                #print("actual",bm.roundToRoundBits(bm.regionToRound(actual)))
+                #print("bracket",bm.roundToRoundBits(bm.regionToRound(bracket)))
+                print("wrong")
+                break
+
+
+    
         
+    return  finalBrackets
 
             
 def generateFilepath(generatorPath,technique= "partition"):
@@ -144,12 +265,124 @@ def generateFilepath(generatorPath,technique= "partition"):
 
 if __name__ == '__main__':
 
+    #test = [1]*8+[0]+[1]*54   # first region's second round first game swapped 
+    #findBracketsWithinR(test,3)
+
+    #quit()
+    with open("../allBracketsTTT.json") as f:
+        data = json.load(f)
+    region_dict = {"West":0,"East":1,"South":2,"Midwest":3,"Southeast":2,"Southwest":3}
+    # seems that southeast appears when south is missing, southwest when midwest is missing
+    # each region has 15 games, 12 games before elite 8
+# if fixing elite 8, 2 teams are fixed in each region. This means the results of 1,2,3 * 2 = 6 games are fixed, leaving 8 free
+# if looking at entire year, then 48 games
+
+
+
+    all_results = dict()
+    # "year" "round" "game"
+
+
+    # bracketToSeeds may be helpful
+    brackets = (data["brackets"])
+    for one in brackets:
+        bracket = one["bracket"]
+        results = bracket['fullvector']
+        results_list = [int(i) for i in results]
+        # [15][15][15][15][2][1]
+        year = bracket['year']
+        regions = bracket["regions"]
+
+        region_idx = [region_dict[one['name']] for one in regions]
+        all_results[year] = (bm.bracketToSeeds(results_list),results_list)
+        # all results stores seeds reaching each round, and 63 bit string list
+        
+    hist35 = [all_results[i][1] for i in all_results]
+    hist35p = hist35[-7:]
+    his35m = hist35[:-7]
+
+    hpp60hist35 = dict()
+    for idx,year in enumerate(hist35):
+        print(idx)
+        hpp60hist35[1985+idx] = findBracketsWithinR(year,6)
+        
+    with open("hpp60hist35.json","w") as f:
+        f.write(json.dumps(hpp60hist35))
+
+
+        
+    quit()
+
+
+
+    
+    if False:
+        roundBits = []
+        start = 0
+        for round in range(6):
+            roundBits.append([start+i for i in range(2**(5-round))])
+            start+= 2**(5-round)
+
+    # print(roundBits)
+
+        roundIdx = [0] * 6
+
+        roundCounts = [0] * 6
+        test = []
+        while len(test) != 63:
+            for one in range(2):
+                roundCounts[0]+=1
+                test.append(roundBits[0][roundIdx[0]])
+                roundIdx[0]+=1
+
+            for round in range(1,6):
+                if roundCounts[round-1] % 2 == 0 and roundCounts[round-1] > 0:
+                    roundCounts[round-1] = 0
+                    #print(roundCounts[round-1])
+                    #print(roundCounts[round-1])
+                    #print(round)
+                    roundCounts[round]+= 1
+                    test.append(roundBits[round][roundIdx[round]])
+                    roundIdx[round] += 1
+                    #print(test)
+                    #print(roundCounts)
+
+
+        #print(roundBits)
+
+        print(test)
+        testActual = []
+        for i in roundBits:
+            testActual+=i
+        print(bm.binaryCombineToRound(test)) # should look like [i for i in range(63)]
+        print(bm.roundToRegion(testActual))
+
+        quit()
+        
+
+    testing = findBracketsWithinR([0]*63,6)
+
+    
+    quit()
+    sum = 0
+    for bracket in testing:
+        r = testing[bracket]
+        
+        actual =  sf.scoreBracket(bm.stringToVector(bm.hexToString((bracket))),actualResultsVector = [1]*63)
+        if 1920-actual[0] != 10*r:
+            sum += 1
+        print(r*10,1920-actual[0])
+    print(sum)
+    
+    quit()
     if False:
     # apply partitioning to existing genrator spaces. (for now only one year)
         sampleSize = 50000
         nReplications = 25
         #for year in range(2013, 2020):
         for year in range(2013,2014):
+
+            # for now since only one year this works, once I scale this I will have to change the logic
             filepaths = []
             saveToPaths = []
             for one in GENERATION_TYPES:
@@ -221,7 +454,7 @@ if __name__ == '__main__':
             
             for key in aPgs:
                 print(key)
-                for pct in np.arange(0.2,1,0.2):
+                for pct in np.arange(0.33,1,0.2):
                     k = int(len(aPgs[key]) * pct)
                     kCs,mDs = kCenterClustering(aPgs[key],k)
 
@@ -230,7 +463,7 @@ if __name__ == '__main__':
 
                     with open("../Outputs/compressedOutputs/2013_kCenters_5_reps.json",'w') as f:
                         f.write(json.dumps(kCenters))
- 
+                    break
             
                     
         # compute a variety of k centers , store those k centers and corresponding r

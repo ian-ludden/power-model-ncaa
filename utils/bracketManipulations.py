@@ -1,4 +1,6 @@
 from collections import defaultdict
+import queue
+import copy
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -163,3 +165,196 @@ def prettifyRegionVector(regionHex):
     r3Winners = applyRoundResults(r2Winners, regionVector[12:14])
     r4Winner = applyRoundResults(r3Winners, regionVector[14:])
     return '{0} {1} {2} {3}'.format(r1Winners, r2Winners, r3Winners, r4Winner)
+
+
+
+
+
+# the findBracketWithinR algorithms generates brackets in a manner that encompases the idea of puting two and two together iteratively. 
+
+def binaryCombineToRound(bracketVector):
+    roundBits = [list() for i in range(6)]
+    seen = 0
+
+    roundCounts = [0] * 6
+    
+    while seen != 63:
+        for one in range(2):
+            roundCounts[0]+=1
+            roundBits[0].append(bracketVector[seen])
+            seen+=1
+
+        for round in range(1,6):
+            if roundCounts[round-1] % 2 == 0 and roundCounts[round-1] > 0:
+                roundCounts[round-1] = 0
+
+                roundCounts[round]+= 1
+                roundBits[round].append(bracketVector[seen])
+                seen+=1
+                #print(test)
+                #print(roundCounts)
+
+    actualVector = []
+    for i in roundBits:
+        actualVector+= i
+    return actualVector
+
+
+# [32][16][8] . . [1] format , as opposed to the [15][15][15][15][3] 
+def roundToRegion(bracketVector):
+    actualBracket = [0] * 63
+    actualBracket[-3:] = bracketVector[-3:]
+    # final 3 games ok
+    for region in range(4):
+        regionVector = [0] * 15
+        for round in range(4):
+            games = 2**(3-round)
+            
+            for game in range(games):
+                if round == 3:
+                    regionVector[-1] = bracketVector[-7+region]
+                else:
+                    regionVector[-(2**(4-round)-1)+game] = bracketVector[    (-(2**(6-round)-1))  +  (region*games)   +game]
+        actualBracket[15*region:15*(region+1)] = regionVector
+            
+
+    return actualBracket
+
+def regionToRound(bracketVector):
+    actualBracket = [0]*63
+    actualBracket[-3:] = bracketVector[-3:]
+    for region in range(4):
+        regionVector = bracketVector[region*15:(region+1)*15]
+        for round in range(4):
+
+            games = 2**(3-round)
+            for game in range(games):
+                actualBracket[-(2**(6-round)-1)+region*games+game] = regionVector[-(2**(4-round) -1) + game ] 
+    
+    return actualBracket
+
+
+# bracketVector is of round form
+
+# [0]  . .. . [5]
+# [g1]        [ncg]
+# [g2]
+# .
+# .
+# [g32]
+def roundToRoundBits(bracketVector):
+    bracketRoundBits = [list() for i in range(6)]
+    seen = 0
+    for i in range(6):
+        for game in range(2**(5-i)):
+            bracketRoundBits[i].append(bracketVector[seen])
+            seen+=1
+    return bracketRoundBits
+
+
+class triBracket:
+    def __init__(self, bit):
+        self.top = None # top child
+        self.bot = None # bot child
+        # if both none we are at end
+        self.bit = bit
+
+    def print(self):
+        print(self.bit)
+
+class tournamentTriBrackets:
+
+    def __init__(self,roundBits,originalBits):
+        self.roundTriBrackets = [list() for i in range(6)] # stores triBrackets
+        self.origOrder = queue.Queue()
+        self.root = None
+        
+        for round in range(6):
+            for game in range(2**(5-round)):
+                self.roundTriBrackets[round].append(triBracket(roundBits[round][game]))
+
+        for round in range(6):
+            round = 5 - round
+            for game in range(2**(5-round)):
+                self.origOrder.put(originalBits[round][game])
+                
+        for round in range(6):
+            for idx,aTriBracket in enumerate(self.roundTriBrackets[round]):
+                if round == 0:
+                    aTriBracket.top = None
+                    aTriBracket.bot = None
+                else:
+                    aTriBracket.top = self.roundTriBrackets[round-1][2*idx]
+                    aTriBracket.bot = self.roundTriBrackets[round-1][2*idx + 1]
+                    
+        self.root = self.roundTriBrackets[5][0] # ncg game
+       # [ [(i).print() for i in self.roundTriBrackets[j]] for j in range(6)]
+        
+    # does the neccesary swapping , such that the end result tree and roundTriBrackets reflect the correct bracket relative to the given bracket for findBracketsWithinR, returns in round form. 
+    def performRotations(self):
+        # now do a bfs
+        toVisit = queue.Queue()
+        toVisit.put(self.root)
+
+        rotated = []
+        count = 0
+        while not toVisit.empty():
+            current = toVisit.get()
+            orig = self.origOrder.get()
+            if(orig == 1):
+                rotated.append(current.bit)
+                if(current.top is not None):
+                    toVisit.put(current.top)
+                if(current.bot is not None):
+                    toVisit.put(current.bot)
+            else:
+                rotated.append(int(not current.bit)) # flip bit and rotate 
+                if(current.bot is not None):
+                    toVisit.put(current.bot)
+                if(current.top is not None):
+                    toVisit.put(current.top)
+
+        # round 6 game 1, round 5 game 1, round 5 game 2 . . . .
+        #print("rotated",rotated)
+        #print(roundToRoundBits(rotated))
+        final = []
+        seen = 0
+        for round in range(6):
+            games = 2**(round)
+            oneRound = []
+            for game in range(games):
+                oneRound.append(rotated[seen+game])
+            oneRound.reverse()
+            final+=oneRound
+            seen+=games
+        final.reverse()
+        #print("final",final)
+        #print(roundToRoundBits(final))
+        return final
+    
+
+        
+
+# bracketVector,orignal both in round format
+def pfToOriginal(bracketVector,original):
+
+    bracketRoundBits = roundToRoundBits(bracketVector)
+
+    # original comes in as region format. 
+    originalRoundBits = roundToRoundBits(original)
+    #print("bracketB",bracketRoundBits)
+    #print("origB",originalRoundBits)
+    
+    bracketTriRep = tournamentTriBrackets(bracketRoundBits,originalRoundBits)
+
+    rotated = bracketTriRep.performRotations()
+
+    return rotated
+
+    
+
+    
+        
+        
+  
+    

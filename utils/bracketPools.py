@@ -28,7 +28,7 @@ import scoringFunctions as sf
 MODEL_TYPES = ['bradley-terry','power']
 GENERATION_TYPES = [(0,1,None),(1,1,None),(1,4,'sampleE8'),(1,5,'sampleF4A'),(1,5,'sampleF4B'),(1,6,'sampleNCG'),(1,4,'samplePower8Brute'),(1,4,'samplePower8BrutePf'),(1,4,'samplePower8BruteRandom1'),(1,4,'samplePower8BruteRPickedUni'),(1,4,'samplePower8BruteRPickedTopN'),(1,4,'samplePower8BruteRPickedHistDist'),(1,5,'samplePower4ABrute'),(1,5,'samplePower4ABrutePf'),(1,5,'samplePower4ABrutePfNot'),(1,5,'samplePower4BBrute'),(1,5,'samplePower4BBrutePf'),(1,5,'samplePower4BBrutePfNot'),(1,5,'samplePower4BBruteRandom1'),(1,5,'samplePower4ARandom1'),(1,4,'samplePower8BrutePfNot'),(1,4,'samplePower8HPPMST1')]
 
-GENERATION_TYPES = [GENERATION_TYPES[-1]]
+#GENERATION_TYPES = [GENERATION_TYPES[-1]]
 
 ######################################################################
 # Generator Naming 
@@ -39,6 +39,8 @@ GENERATION_TYPES = [GENERATION_TYPES[-1]]
 # -RPicked- : Predetermining the number of upsets to happen before 
 # picking the non elite 8 influenced games to be a potential upset. 
 #
+
+# HistDist is historical based on seed matchups. 
 ######################################################################
 
 
@@ -265,7 +267,7 @@ def readAndScore(nReplications, sampleSize):
         """Reads the JSON files for all experiment batches, 
         scores the brackets, and 
         stores the Max Score and ESPN Count results 
-        in a CSV file."""
+        in a CSV file. (updates the json file directly now)  """
         # TODO: implement
         for year in range(2013, 2020):
                 filepaths = []

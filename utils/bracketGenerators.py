@@ -669,7 +669,12 @@ def generateBracketsPickFavorite():
 if __name__ == '__main__':
     sample = generateBracketPower(2019,4,"samplePower8HPPMST1")
     print(len(sample))
-    lol = sf.HPP([1]*63,[1]*15+[1]*48,4)
+    dummy = ([1]*14+[0])*4 + [1]*3
+    #dummy[14] = 1
+    #dummy[44] = 1
+    dummy[29] = 1
+    dummy[59] = 1
+    lol = sf.HPP([1]*63,dummy[:63],4)
     print(lol)
 
     

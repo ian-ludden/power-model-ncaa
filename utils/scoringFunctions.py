@@ -45,6 +45,7 @@ pickFavoriteScore = {
         '2013': 1120
 }
 
+# takes in vectors
 def scoreBracket(bracketVector, actualResultsVector=None, year=2020, isPickFavorite=False):
         """Scores the given bracket vector according to the 
         ESPN Bracket Challenge scoring system. The isPickFavorite
@@ -111,10 +112,11 @@ def scoreBracket(bracketVector, actualResultsVector=None, year=2020, isPickFavor
         roundScores[0] = sum(roundScores)
         return roundScores
 
-def HPP(bracketVector,actualResultsVector,upTo = 4):
+
+
+def HPP(bracketVector,actualResultsVector,upTo = 4,computeType = "-+"):
         # bascially scoreBracket, but allows best case scenario up to a round
-        # usually 60 v 60 
-    
+        # can take in both 60 bit and 63 bit inputs    
 
         maxR = 6 # index 1, so maxR indicates which r is last, while r <= maxR
         maxR = upTo
@@ -158,21 +160,30 @@ def HPP(bracketVector,actualResultsVector,upTo = 4):
 
         #print(regionFinalists)
         #print(actualRegionFinalists)
+        #print("--=--")
         HPP = sum(roundScores)
 
-
+        if computeType == "-":
+                return HPP
 
         # now compute best case scneraio.
         # if maxR = 4 : [R1,R2] [R3,R4] => [a,b]
         # if maxR = 3 : [R1] [R2] [R3] [R4] => maxR = 4
 
+
+        #HPP_4+
+        # for each pair if one possible then you get it
+        # best case scenario given that you have the last 3 games left.
+        
+        
         possible = []
         roundMatches = []
         for i in range(6 - maxR):
+                
                 if i == 0:
                         for j in range(int(len(regionFinalists)/2)):
                                 matched = False
-                                if(regionFinalists[j] == actualRegionFinalists[j]) or (regionFinalists[j+1] == actualRegionFinalists[j+1]):
+                                if(regionFinalists[2*j] == actualRegionFinalists[2*j]) or (regionFinalists[2*j+1] == actualRegionFinalists[2*j +1]):
                                         matched = True
                                 possible.append(matched)
                         roundMatches.append(len([i for i in possible if i ]))
@@ -180,20 +191,26 @@ def HPP(bracketVector,actualResultsVector,upTo = 4):
                         newPossible = []
                         for j in range(int(len(possible)/2)):
                                 matched = False
-                                if possible[j] or possible[j+1]:
+                                if possible[2*j] or possible[2*j+1]:
                                         matched = True
                                 newPossible.append(matched)
                         possible = newPossible
                         roundMatches.append(len([i for i in possible if i]))
-                                
+        #print(roundMatches)
                         
-      
+        #print(HPP)
+        HPPplus = 0
         for i in range(len(roundMatches)):
                 score = int(320/ (2**(i)) )
+                
                 matches = roundMatches[-(i+1)]
-                HPP+= (score)*matches
-        
-        
+                #print(score,matches)
+                HPPplus +=  (score)*matches
+
+                
+        HPP += HPPplus
+        if computeType == "+":
+                return HPPplus
   
 
         return 1920 - HPP
@@ -242,6 +259,11 @@ def mstNewBracket(adjacencyList, alTable,newBracket,upTo):
                         totalCost+= edge[0]
                         
         return (newAdjList, totalCost / 2)
+
+
+
+
+
 
 
 
