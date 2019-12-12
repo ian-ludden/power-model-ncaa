@@ -30,6 +30,8 @@ GENERATION_TYPES = [(0,1,None),(1,1,None),(1,4,'sampleE8'),(1,5,'sampleF4A'),(1,
 
 GENERATION_TYPES = [GENERATION_TYPES[-1]]
 
+# print (GENERATION_TYPES)
+
 ######################################################################
 # Generator Naming 
 #
@@ -452,7 +454,7 @@ if __name__ == '__main__':
 
         
         pastWin = dict()
-        with open("../allBracketsTTT.json","r") as file:
+        with open("allBracketsTTT.json","r") as file:
                 historical = json.load(file)
         for i in historical["brackets"]:
                 pastWin[i["bracket"]["year"]]=(bm.stringToVector(i["bracket"]['fullvector']))

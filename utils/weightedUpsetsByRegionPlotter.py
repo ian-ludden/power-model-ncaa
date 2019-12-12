@@ -3,6 +3,8 @@ import os
 import bracketManipulations as bm
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+from numpy.polynomial.polynomial import polyfit
 
 
 def upsetsWeightedCalc(year, strVector, regions):
@@ -161,29 +163,34 @@ print(worstRegions)
 print()
 print(bestRegions)
 
-fig, axs = plt.subplots(2)
-
-axs[0].hist(worstRegions, [5,10,15,20,25,30,35,40,45,50,55], (5,55))   
-axs[0].set_xticks(range(5,60,5))
-# axs[0].hist(worstRegions)
-axs[0].set_title("Max Weighted Upsets")
-axs[1].hist(bestRegions, [0,1,2,3,4,5,6,7,8,9,10], (0,10))
-axs[1].set_xticks(range(0,11))
-# axs[1].hist(bestRegions)
-axs[1].set_title("Min Weighted Upsets")
-
-fig.tight_layout()
-# rcParams['figure.figsize'] = [10, 5]
-plt.show()
-
 # fig, axs = plt.subplots(2)
 
-# axs[0].scatter(years, worstRegions)
-# axs[0].plot(years, worstRegions)
+# axs[0].hist(worstRegions, [5,10,15,20,25,30,35,40,45,50,55], (5,55))   
+# axs[0].set_xticks(range(5,60,5))
 # axs[0].set_title("Max Weighted Upsets")
-# axs[1].scatter(years, bestRegions)
-# axs[1].plot(years, bestRegions)
+# axs[1].hist(bestRegions, [0,1,2,3,4,5,6,7,8,9,10], (0,10))
+# axs[1].set_xticks(range(0,11))
 # axs[1].set_title("Min Weighted Upsets")
-
 # fig.tight_layout()
 # plt.show()
+
+fig, axs = plt.subplots(2)
+
+axs[0].scatter(years, worstRegions)
+axs[0].plot(years, worstRegions)
+b, m = polyfit(years, worstRegions, 1)
+# axs[0].plot(years, b + np.asarray(m) * years, '-')
+axs[0].set_title("Max Weighted Upsets")
+print(b)
+print(m)
+
+axs[1].scatter(years, bestRegions)
+axs[1].plot(years, bestRegions)
+b, m = polyfit(years, bestRegions, 1)
+# axs[1].plot(years, b + np.asarray(m) * years, '-')
+axs[1].set_title("Min Weighted Upsets")
+print(b)
+print(m)
+
+fig.tight_layout()
+plt.show()
