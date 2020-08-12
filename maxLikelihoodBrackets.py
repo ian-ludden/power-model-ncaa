@@ -1,12 +1,15 @@
 import csv
+from datetime import datetime
 from itertools import permutations
 import json
 import math
-# import matplotlib.pyplot as plt
 import numpy as np
 import os
 from pprint import pprint
 import random
+
+import utils.bracketManipulations as bm
+from utils.scoringFunctions import scoreBracket
 
 ######################################################################
 # Author: 	Ian Ludden
@@ -68,12 +71,14 @@ mostLikelyRegions = {
 
 # Predicted probability seed i defeats seed 17 - i in round 1, i = 1 to 8. 
 # These are for predicting the 2020 tournament.
-R1_PROBS = [None, 0.99, 0.94, 0.85, 0.79, 0.64, 0.63, 0.6, 0.5]
+R1_PROBS_2020 = [None, 0.993, 0.943, 0.850, 0.793, 0.643, 0.629, 0.607, 0.486]
+R1_PROBS_2019 = [None, 0.993, 0.941, 0.846, 0.794, 0.654, 0.625, 0.618, 0.500] # For predicting the 2019 tourn.
 
 # Generic alpha values to use for each round
 # (unused for round 1, since R1_PROBS is used)
 # These are for predicting the 2020 tournament.
-ALPHA_VALS = [None, 0.96, 1.09, 0.85, 0.11, 0.62, 1.23]
+ALPHA_VALS_2020 = [None, 0.96, 1.09, 0.85, 0.11, 0.62, 1.23]
+ALPHA_VALS_2019 = [None, 1.04, 1.04, 0.86, 0.15, 0.73, 1.2] # For predicting the 2019 tourn.
 
 def applyRoundResults(seeds, results):
 	"""Takes in a list of seeds that competed
@@ -87,28 +92,7 @@ def applyRoundResults(seeds, results):
 	return [seeds[2*i] * results[i] + seeds[2*i+1] * (1 - results[i]) for i in range(nGames)]
 
 
-def regionVectorFromHex(regionHex):
-	"""Convert a region vector's 4-digit hexadecimal representation
-	   (with a leading 0) into a list of 15 0's or 1's. 
-	"""
-	bitString = bin(int(regionHex, 16))[2:].zfill(15)
-	return [int(bitString[i]) for i in range(len(bitString))]
-
-
-def prettifyRegionVector(regionHex):
-	"""Returns a more descriptive string for the 
-	   given 4-digit hex representation of a region vector. 
-	"""
-	regionVector = regionVectorFromHex(regionHex)
-	seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-	r1Winners = applyRoundResults(seeds, regionVector[:8])
-	r2Winners = applyRoundResults(r1Winners, regionVector[8:12])
-	r3Winners = applyRoundResults(r2Winners, regionVector[12:14])
-	r4Winner = applyRoundResults(r3Winners, regionVector[14:])
-	return '{0} {1} {2} {3}'.format(r1Winners, r2Winners, r3Winners, r4Winner)
-
-
-def getWinProbability(team1, team2, r):
+def getWinProbability(team1, team2, r, year=2019):
 	"""Returns the predicted probability that team1 defeats team2 
 	   in the given round r. 
 	   Can be modified to use different models. 
@@ -121,6 +105,9 @@ def getWinProbability(team1, team2, r):
 	   r	 - the round number
 			   integer from 1 to 6
 	"""
+	R1_PROBS = R1_PROBS_2019 if year == 2019 else R1_PROBS_2020
+	ALPHA_VALS = ALPHA_VALS_2019 if year == 2019 else ALPHA_VALS_2020
+
 	# Currently using Power Model
 	s1 = team1['seed']
 	s2 = team2['seed']
@@ -141,7 +128,7 @@ def getWinProbability(team1, team2, r):
 	return s2a / (s1a + s2a)
 
 
-def logLikelihood(bracket):
+def logLikelihood(bracket, year=2020):
 	"""Returns the log-likelihood of the given bracket using the 
 	   win probabilities of the default model. 
 
@@ -176,7 +163,7 @@ def logLikelihood(bracket):
 			for game in range(nGames):
 				team1 = {'seed': seeds[2 * game], 'region': region}
 				team2 = {'seed': seeds[2 * game + 1], 'region': region}
-				winProb = getWinProbability(team1, team2, r=r)
+				winProb = getWinProbability(team1, team2, r=r, year=year)
 				if regionVec[game] == 1:
 					totalLogProb += math.log(winProb)
 					# if r == 4:
@@ -329,7 +316,7 @@ def evaluateAndSortBrackets(brackets):
 	return np.sort(bracketsLogLhoods, order=['log-lhood'], axis=0)[::-1]
 
 
-def evaluateAndSortRegionBrackets(regionStrings):
+def evaluateAndSortRegionBrackets(regionStrings, year=2020):
 	"""Computes the log-likelihood of each of the given region 
 	   strings and sorts them in decreasing order of likelihood. 
 	   Returns both the region strings and their log-likelihoods 
@@ -341,8 +328,8 @@ def evaluateAndSortRegionBrackets(regionStrings):
 	"""
 	logLhoods = []
 	for regionString in regionStrings:
-		regionVector = regionVectorFromHex(regionString)
-		logLhoods.append(logLikelihood(regionVector))
+		regionVector = bm.stringToVector(bm.hexToString(regionString))
+		logLhoods.append(logLikelihood(regionVector, year=year))
 
 	# Create array for bracket strings and log-likelihoods
 	dt = np.dtype([('regionString', np.unicode_, 15), ('log-lhood', np.float64, 1)])
@@ -433,7 +420,7 @@ def sampleBracketsAsRegions(nSamples, T=100):
 		regionWinners = []
 		for i in range(4):
 			regionHex = sampleMLRegion(T)
-			regionVector = regionVectorFromHex(regionHex)
+			regionVector = bm.stringToVector(bm.hexToString(regionHex))
 			regionVecs.append(regionVector)
 			# 1.1 Determine region winners (F4 seeds)
 			seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
@@ -538,69 +525,6 @@ def evaluateAllLastThreeGames(maxSeed):
 	pass
 
 
-def scoreBracket(bracketVector, actualResultsVector, isPickFavorite = False):
-	"""Scores the given bracket vector according to the 
-	   ESPN Bracket Challenge scoring system. The isPickFavorite
-	   flag indicates whether the bracket being scored is from the
-	   Pick Favorite model, in which case we assume that it correctly
-	   guesses the Final Four and National Championship outcomes.
-	   Round score subtotals, with only indices 1-6 used
-	   as actual subtotals. The 0th element is the overall total.
-	"""
-	roundScores = [0, 0, 0, 0, 0, 0, 0]
-
-	regionWinners = []
-	actualRegionWinners = []
-
-	# Compute Rounds 1-4 scores
-	for region in range(4):
-		start = 15 * region
-		end = start + 8
-		regionVector = bracketVector[start:end]
-		regionResultsVector = actualResultsVector[start:end]
-
-		seeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-		actualSeeds = [1, 16, 8, 9, 5, 12, 4, 13, 6, 11, 3, 14, 7, 10, 2, 15]
-
-		for r in range(1, 5):
-			seeds = applyRoundResults(seeds, regionVector)
-			actualSeeds = applyRoundResults(actualSeeds, regionResultsVector)
-
-			matches = [i for i, j in zip(seeds, actualSeeds) if i == j]
-			roundScores[r] += 10 * (2 ** (r-1)) * len(matches)
-
-			start = end
-			end += int(len(seeds) / 2)
-			regionVector = bracketVector[start:end]
-			regionResultsVector = actualResultsVector[start:end]
-
-		regionWinners.append(seeds[0])
-		actualRegionWinners.append(actualSeeds[0])
-
-	# Compute Rounds 5-6 scores
-	finalFourVector = bracketVector[-3:]
-	actualFinalFourVector = actualResultsVector[-3:]
-
-	if isPickFavorite:
-		finalFourVector = actualFinalFourVector
-
-	isCorrectFirstSemifinal = (finalFourVector[0] == actualFinalFourVector[0]) and ((finalFourVector[0] == 1 and (regionWinners[0] == actualRegionWinners[0])) or (finalFourVector[0] == 0 and (regionWinners[1] == actualRegionWinners[1])))
-	if isCorrectFirstSemifinal:
-		roundScores[5] += 160
-	
-	isCorrectSecondSemifinal = (finalFourVector[1] == actualFinalFourVector[1]) and ((finalFourVector[1] == 1 and (regionWinners[2] == actualRegionWinners[2])) or (finalFourVector[1] == 0 and (regionWinners[3] == actualRegionWinners[3])))
-
-	if isCorrectSecondSemifinal:
-		roundScores[5] += 160
-
-	isCorrectChampion = (finalFourVector[2] == actualFinalFourVector[2]) and ((finalFourVector[2] == 1 and isCorrectFirstSemifinal) or (finalFourVector[2] == 0 and isCorrectSecondSemifinal))
-	if isCorrectChampion:
-		roundScores[6] += 320
-
-	roundScores[0] = sum(roundScores)
-	return roundScores
-
-
 if __name__ == '__main__':
 	# # First, test pick favorite bracket
 	# bracket = [int(pickFavoriteString[i]) for i in range(63)]
@@ -620,41 +544,55 @@ if __name__ == '__main__':
 	# brackets = generatePossibleBrackets(100)
 	# print('Generated {0} brackets.'.format(len(brackets)))
 
-	# # Generate all 32,768 possible region vectors and print with log-likelihoods
+	# Step 1: Generate all 32,768 possible region vectors and print with log-likelihoods
 	# regionStrings = generateAllRegionVectors()
-	# sortedArray = evaluateAndSortRegionBrackets(regionStrings)
+	# sortedArray = evaluateAndSortRegionBrackets(regionStrings, year=2019)
 	# for pair in sortedArray:
-	# 	print('\"0x{0}\",{1:.4f},{2}'.format(pair[0], pair[1], prettifyRegionVector(pair[0])))
+	# 	print('\"0x{0}\",{1:.4f},{2}'.format(pair[0], pair[1], bm.prettifyRegionVector(pair[0])))
 
-	# Sample some brackets using sampleBracketsAsRegions and see how they score
-	# nBrackets = 50000
+	# Step 2: Sample some brackets using sampleBracketsAsRegions and see how they score
+	print(str(datetime.now()))
 
-	# print('Most Likely Regions Model')
-	# brackets = sampleBracketsAsRegions(nBrackets)
+	for year in range(2013, 2019 + 1):
+		nTrials = 10
+		nBracketsList = [5000, 10000, 50000]
+		
 
-	# # print(sortedArray[0])
-	# # print(sortedArray[1])
-	# # print('...')
-	# # print(sortedArray[-1])
+		maxScoresMLR100 = np.zeros((nTrials, len(nBracketsList)))
+		maxScoresR64 = np.zeros((nTrials, len(nBracketsList)))
 
-	# for year in range(2013, 2019 + 1):
-	# 	historicalVector = [int(historicalBrackets[str(year)][i]) for i in range(63)]
-	# 	scores = []
-	# 	for bracketVector in brackets:
-	# 		scores.append(scoreBracket(bracketVector, historicalVector)[0])
-	# 	scores.sort()
-	# 	pprint(scores[-1])
-	# 	print()
+		for trial in range(nTrials):
+			for nBracketsIndex, nBrackets in enumerate(nBracketsList):
+				# Sample from MLR100 generator
+				brackets = sampleBracketsAsRegions(nBrackets)
+				historicalVector = [int(historicalBrackets[str(year)][i]) for i in range(63)]
+				scores = []
+				for bracketVector in brackets:
+					scores.append(scoreBracket(bracketVector, historicalVector)[0])
+				scores.sort()
+				maxScoresMLR100[trial, nBracketsIndex] = scores[-1]
 
-	# print('\nPower Model')
-	# brackets = sampleBracketsPowerModel(nBrackets)
+				# Sample from R64 generator (power model)
+				brackets = sampleBracketsPowerModel(nBrackets)
 
-	# for year in range(2013, 2019 + 1):
-	# 	historicalVector = [int(historicalBrackets[str(year)][i]) for i in range(63)]
-	# 	scores = []
-	# 	for bracketVector in brackets:
-	# 		scores.append(scoreBracket(bracketVector, historicalVector)[0])
-	# 	scores.sort()
-	# 	pprint(scores[-1])
-	# 	print()
-	evaluateAllLastThreeGames(4)
+				historicalVector = [int(historicalBrackets[str(year)][i]) for i in range(63)]
+				scores = []
+				for bracketVector in brackets:
+					scores.append(scoreBracket(bracketVector, historicalVector)[0])
+				scores.sort()
+				maxScoresR64[trial, nBracketsIndex] = scores[-1]
+
+		maxScoresMLR100Means = np.mean(maxScoresMLR100, axis=0)
+		maxScoresR64Means = np.mean(maxScoresR64, axis=0)
+
+		# import pdb; pdb.set_trace()
+
+		print('Avg Max Score,{0} Replications,Year {1}'.format(nTrials, year))
+		print('Pool Size,MLR100,R64')
+		for nBracketsIndex, nBrackets in enumerate(nBracketsList):
+			print('{0},{1:.2f},{2:.2f}'.format(nBrackets, maxScoresMLR100Means[nBracketsIndex], 
+				maxScoresR64Means[nBracketsIndex]))
+
+		print(str(datetime.now()))
+		# Bonus: Compute most likely overall brackets
+	# evaluateAllLastThreeGames(4)

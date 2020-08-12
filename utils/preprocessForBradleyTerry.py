@@ -4,9 +4,12 @@ __version__ = "1.0.0"
 __email__ = "nab6@illinois.edu"
 __status__ = "Development"
 
-
+import json
+import numpy as np
+import os
 import pandas as pd
-from utils.PriorDistributions import read_data
+
+dirname = os.path.dirname(__file__) or '.'
 
 
 def preprocess(year):
@@ -106,3 +109,26 @@ if __name__ == '__main__':
     for year in range(2013, 2020):
         df = preprocess(year)
         df.to_csv('bradleyTerry/counts-{}.csv'.format(year), index=False)
+
+
+data_cache = {}
+
+def read_data(fmt, limit=0, start=1985):
+    key = hash((fmt, limit, start))
+    if key not in data_cache:
+        # allBracketsTTT.json is stored one level above
+        with open(dirname + '/../allBrackets%s.json' % fmt) as f:
+            vectors = [a['bracket']['fullvector']
+                       for a in json.load(f)['brackets']
+                       if (limit == 0 or int(a['bracket']['year']) < limit) and
+                       int(a['bracket']['year']) >= start]
+
+        unpooled = pd.DataFrame([list(a) for a in vectors])
+
+        pooled = pd.DataFrame()
+        pooled = pooled.append([list(a)[:15] for a in vectors])
+        pooled = pooled.append([list(a)[15:30] for a in vectors])
+        pooled = pooled.append([list(a)[30:45] for a in vectors])
+        pooled = pooled.append([list(a)[45:60] for a in vectors])
+        data_cache[key] = (unpooled, pooled)
+    return data_cache[key]
